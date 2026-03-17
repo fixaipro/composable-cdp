@@ -495,6 +495,24 @@ details > *:not(summary){padding:.5rem 0 .5rem 1rem}
 .gauge-info .lbl{font-size:.65rem;color:var(--muted);margin-top:.2rem;text-transform:uppercase;letter-spacing:.1em}
 .gauge-info .sub{font-size:.7rem;color:var(--muted2);margin-top:.5rem;line-height:1.6}
 
+/* AUDIENCE HEALTH */
+.aud-tab{
+  padding:.4rem 1rem;font-size:.72rem;
+  border-radius:6px;border:1px solid var(--border);
+  color:var(--muted2);cursor:pointer;transition:.2s;
+  font-family:'DM Mono',monospace;background:var(--card);
+}
+.aud-tab:hover{border-color:var(--violet);color:var(--violet)}
+.aud-tab.active{background:rgba(139,92,246,.1);border-color:var(--violet);color:var(--violet)}
+
+/* REAL-LIFE FLOW */
+@keyframes sgtmPulse{0%,100%{opacity:.8;transform:scale(1)}50%{opacity:.3;transform:scale(1.03)}}
+@keyframes flowPkt{0%{opacity:0;offset-distance:0%}10%{opacity:1}90%{opacity:1}100%{opacity:0;offset-distance:100%}}
+.rf-packet{position:absolute;width:10px;height:10px;border-radius:50%;animation:flowPkt 1s ease forwards;pointer-events:none}
+.rf-step-dot{width:10px;height:10px;border-radius:50%;border:2px solid var(--border2);background:transparent;cursor:pointer;transition:.2s}
+.rf-step-dot.done{background:var(--emerald);border-color:var(--emerald)}
+.rf-step-dot.active{background:var(--cyan);border-color:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+
 </style>
 </head>
 <body>
@@ -538,227 +556,222 @@ details > *:not(summary){padding:.5rem 0 .5rem 1rem}
   </div>
 
   <!-- Architecture SVG -->
-  <div class="arch-svg-wrap">
-    <svg id="arch-svg" viewBox="0 0 1100 580" xmlns="http://www.w3.org/2000/svg" style="width:100%;min-width:800px">
+  <div class="arch-svg-wrap" style="padding:1.5rem 1rem;overflow-x:auto">
+    <svg id="arch-svg" viewBox="0 0 1260 600" xmlns="http://www.w3.org/2000/svg" style="width:100%;min-width:980px;display:block">
       <defs>
-        <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-          <path d="M0,0 L0,6 L8,3 z" fill="#00d4ff" opacity=".7"/>
-        </marker>
-        <marker id="arr-amber" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-          <path d="M0,0 L0,6 L8,3 z" fill="#f59e0b" opacity=".7"/>
-        </marker>
-        <marker id="arr-violet" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-          <path d="M0,0 L0,6 L8,3 z" fill="#8b5cf6" opacity=".7"/>
-        </marker>
-        <filter id="glow-cyan"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-        <filter id="glow-amber"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-        <linearGradient id="gr-card" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#111d30"/>
-          <stop offset="100%" stop-color="#0d1627"/>
+        <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#00d4ff" opacity=".8"/></marker>
+        <marker id="arr-amber" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#f59e0b" opacity=".8"/></marker>
+        <marker id="arr-violet" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#8b5cf6" opacity=".8"/></marker>
+        <marker id="arr-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#10b981" opacity=".8"/></marker>
+        <filter id="glow-c"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <linearGradient id="gc" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#111d30"/><stop offset="100%" stop-color="#0d1627"/>
         </linearGradient>
       </defs>
 
-      <!-- LAYER LABELS -->
-      <text x="10" y="30" fill="#1a2d4a" font-family="DM Mono" font-size="9" text-transform="uppercase" letter-spacing="3">INGESTION</text>
-      <text x="10" y="165" fill="#1a2d4a" font-family="DM Mono" font-size="9" letter-spacing="3">STREAM / BATCH</text>
-      <text x="10" y="295" fill="#1a2d4a" font-family="DM Mono" font-size="9" letter-spacing="3">STORAGE & ID</text>
-      <text x="10" y="415" fill="#1a2d4a" font-family="DM Mono" font-size="9" letter-spacing="3">GOVERNANCE</text>
-      <text x="10" y="530" fill="#1a2d4a" font-family="DM Mono" font-size="9" letter-spacing="3">ACTIVATION</text>
+      <!-- ── LANE LABELS (rotated, left side) ── -->
+      <text x="8" y="75"  fill="#223550" font-family="DM Mono" font-size="8" font-weight="600" letter-spacing="2">INGESTION</text>
+      <text x="8" y="198" fill="#223550" font-family="DM Mono" font-size="8" font-weight="600" letter-spacing="2">STREAM</text>
+      <text x="8" y="328" fill="#223550" font-family="DM Mono" font-size="8" font-weight="600" letter-spacing="2">STORAGE</text>
+      <text x="8" y="438" fill="#223550" font-family="DM Mono" font-size="8" font-weight="600" letter-spacing="2">GOVERN</text>
+      <text x="8" y="545" fill="#223550" font-family="DM Mono" font-size="8" font-weight="600" letter-spacing="2">ACTIVATE</text>
 
-      <!-- Horizontal lane backgrounds -->
-      <rect x="80" y="8" width="1010" height="75" rx="6" fill="rgba(0,212,255,0.03)" stroke="rgba(0,212,255,0.08)" stroke-width="1"/>
-      <rect x="80" y="143" width="1010" height="75" rx="6" fill="rgba(139,92,246,0.03)" stroke="rgba(139,92,246,0.08)" stroke-width="1"/>
-      <rect x="80" y="273" width="1010" height="80" rx="6" fill="rgba(245,158,11,0.03)" stroke="rgba(245,158,11,0.08)" stroke-width="1"/>
-      <rect x="80" y="393" width="1010" height="60" rx="6" fill="rgba(244,63,94,0.04)" stroke="rgba(244,63,94,0.08)" stroke-width="1"/>
-      <rect x="80" y="503" width="1010" height="65" rx="6" fill="rgba(16,185,129,0.03)" stroke="rgba(16,185,129,0.08)" stroke-width="1"/>
+      <!-- ── LANE BACKGROUNDS ── -->
+      <rect x="72" y="12"  width="1178" height="80"  rx="6" fill="rgba(0,212,255,.03)"   stroke="rgba(0,212,255,.07)"   stroke-width="1"/>
+      <rect x="72" y="152" width="1178" height="78"  rx="6" fill="rgba(139,92,246,.03)"  stroke="rgba(139,92,246,.07)"  stroke-width="1"/>
+      <rect x="72" y="282" width="1178" height="80"  rx="6" fill="rgba(245,158,11,.03)"  stroke="rgba(245,158,11,.07)"  stroke-width="1"/>
+      <rect x="72" y="410" width="1178" height="58"  rx="6" fill="rgba(244,63,94,.03)"   stroke="rgba(244,63,94,.07)"   stroke-width="1"/>
+      <rect x="72" y="515" width="1178" height="68"  rx="6" fill="rgba(16,185,129,.03)"  stroke="rgba(16,185,129,.07)"  stroke-width="1"/>
 
-      <!-- INGESTION SOURCES -->
-      <g id="src-web">
-        <rect x="90" y="20" width="100" height="50" rx="6" fill="url(#gr-card)" stroke="#00d4ff" stroke-width="1" opacity=".9"/>
-        <text x="140" y="40" text-anchor="middle" fill="#00d4ff" font-family="DM Mono" font-size="9" font-weight="600">WEB SDK</text>
-        <text x="140" y="54" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">GA4 · Tag Mgr</text>
-        <text x="140" y="65" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Tealium</text>
-      </g>
-      <g id="src-mobile">
-        <rect x="205" y="20" width="100" height="50" rx="6" fill="url(#gr-card)" stroke="#00d4ff" stroke-width="1" opacity=".9"/>
-        <text x="255" y="40" text-anchor="middle" fill="#00d4ff" font-family="DM Mono" font-size="9" font-weight="600">MOBILE SDK</text>
-        <text x="255" y="54" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">iOS · Android</text>
-        <text x="255" y="65" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Flutter · RN</text>
-      </g>
-      <g id="src-crm">
-        <rect x="320" y="20" width="100" height="50" rx="6" fill="url(#gr-card)" stroke="#00d4ff" stroke-width="1" opacity=".9"/>
-        <text x="370" y="40" text-anchor="middle" fill="#00d4ff" font-family="DM Mono" font-size="9" font-weight="600">CRM / ERP</text>
-        <text x="370" y="54" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Salesforce</text>
-        <text x="370" y="65" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">SAP · HubSpot</text>
-      </g>
-      <g id="src-offline">
-        <rect x="435" y="20" width="100" height="50" rx="6" fill="url(#gr-card)" stroke="#f59e0b" stroke-width="1.5" opacity=".9"/>
-        <text x="485" y="40" text-anchor="middle" fill="#f59e0b" font-family="DM Mono" font-size="9" font-weight="600">OFFLINE</text>
-        <text x="485" y="54" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">POS · Call Ctr</text>
-        <text x="485" y="65" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Email · DM</text>
-      </g>
-      <g id="src-stream">
-        <rect x="550" y="20" width="100" height="50" rx="6" fill="url(#gr-card)" stroke="#00d4ff" stroke-width="1" opacity=".9"/>
-        <text x="600" y="40" text-anchor="middle" fill="#00d4ff" font-family="DM Mono" font-size="9" font-weight="600">STREAMING</text>
-        <text x="600" y="54" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">IoT · Kafka</text>
-        <text x="600" y="65" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Clickstream</text>
-      </g>
-      <g id="src-3p">
-        <rect x="665" y="20" width="100" height="50" rx="6" fill="url(#gr-card)" stroke="#8b5cf6" stroke-width="1" opacity=".9"/>
-        <text x="715" y="40" text-anchor="middle" fill="#8b5cf6" font-family="DM Mono" font-size="9" font-weight="600">3P DATA</text>
-        <text x="715" y="54" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">LiveRamp</text>
-        <text x="715" y="65" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Acxiom</text>
-      </g>
-      <g id="src-ads">
-        <rect x="780" y="20" width="110" height="50" rx="6" fill="url(#gr-card)" stroke="#8b5cf6" stroke-width="1" opacity=".9"/>
-        <text x="835" y="40" text-anchor="middle" fill="#8b5cf6" font-family="DM Mono" font-size="9" font-weight="600">AD PLATFORMS</text>
-        <text x="835" y="54" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Google · Meta</text>
-        <text x="835" y="65" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Amazon · SA360</text>
-      </g>
+      <!-- ════ INGESTION ROW — 7 boxes, 152px wide, 16px gap ════ -->
+      <!-- box centres: 152, 320, 488, 656, 824, 992, 1160 -->
 
-      <!-- Arrows to Pub/Sub -->
-      <line x1="140" y1="70" x2="440" y2="150" stroke="#00d4ff" stroke-width="1" stroke-dasharray="4,3" opacity=".4" marker-end="url(#arr)"/>
-      <line x1="255" y1="70" x2="455" y2="150" stroke="#00d4ff" stroke-width="1" stroke-dasharray="4,3" opacity=".4" marker-end="url(#arr)"/>
-      <line x1="370" y1="70" x2="465" y2="150" stroke="#00d4ff" stroke-width="1" stroke-dasharray="4,3" opacity=".4" marker-end="url(#arr)"/>
-      <line x1="485" y1="70" x2="480" y2="150" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,3" opacity=".5" marker-end="url(#arr-amber)"/>
-      <line x1="600" y1="70" x2="495" y2="150" stroke="#00d4ff" stroke-width="1" stroke-dasharray="4,3" opacity=".4" marker-end="url(#arr)"/>
-      <line x1="715" y1="70" x2="520" y2="150" stroke="#8b5cf6" stroke-width="1" stroke-dasharray="4,3" opacity=".4" marker-end="url(#arr-violet)"/>
-      <line x1="835" y1="70" x2="540" y2="150" stroke="#8b5cf6" stroke-width="1" stroke-dasharray="4,3" opacity=".4" marker-end="url(#arr-violet)"/>
+      <!-- WEB SDK -->
+      <rect x="76"  y="22" width="152" height="60" rx="7" fill="url(#gc)" stroke="#00d4ff" stroke-width="1.2"/>
+      <text x="152" y="44" text-anchor="middle" fill="#00d4ff" font-family="DM Mono" font-size="10" font-weight="700">WEB SDK</text>
+      <text x="152" y="58" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">GA4 · Tag Manager</text>
+      <text x="152" y="70" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Tealium · sGTM</text>
 
-      <!-- PUB/SUB LAYER -->
-      <rect x="170" y="150" width="140" height="55" rx="6" fill="url(#gr-card)" stroke="#8b5cf6" stroke-width="1.5"/>
-      <text x="240" y="170" text-anchor="middle" fill="#a78bfa" font-family="DM Mono" font-size="9" font-weight="600">CLOUD PUB/SUB</text>
-      <text x="240" y="184" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Real-time Event Bus</text>
-      <text x="240" y="196" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">10M+ msgs/sec</text>
+      <!-- MOBILE SDK -->
+      <rect x="244" y="22" width="152" height="60" rx="7" fill="url(#gc)" stroke="#00d4ff" stroke-width="1.2"/>
+      <text x="320" y="44" text-anchor="middle" fill="#00d4ff" font-family="DM Mono" font-size="10" font-weight="700">MOBILE SDK</text>
+      <text x="320" y="58" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">iOS · Android</text>
+      <text x="320" y="70" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Flutter · React Native</text>
+
+      <!-- CRM / ERP -->
+      <rect x="412" y="22" width="152" height="60" rx="7" fill="url(#gc)" stroke="#00d4ff" stroke-width="1.2"/>
+      <text x="488" y="44" text-anchor="middle" fill="#00d4ff" font-family="DM Mono" font-size="10" font-weight="700">CRM / ERP</text>
+      <text x="488" y="58" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Salesforce · SAP</text>
+      <text x="488" y="70" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">HubSpot · Dynamics</text>
+
+      <!-- OFFLINE -->
+      <rect x="580" y="22" width="152" height="60" rx="7" fill="url(#gc)" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="656" y="44" text-anchor="middle" fill="#f59e0b" font-family="DM Mono" font-size="10" font-weight="700">OFFLINE</text>
+      <text x="656" y="58" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">POS · Call Centre</text>
+      <text x="656" y="70" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Email · Direct Mail</text>
+
+      <!-- STREAMING -->
+      <rect x="748" y="22" width="152" height="60" rx="7" fill="url(#gc)" stroke="#00d4ff" stroke-width="1.2"/>
+      <text x="824" y="44" text-anchor="middle" fill="#00d4ff" font-family="DM Mono" font-size="10" font-weight="700">STREAMING</text>
+      <text x="824" y="58" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">IoT · Kafka</text>
+      <text x="824" y="70" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Clickstream · Webhook</text>
+
+      <!-- 3P DATA -->
+      <rect x="916" y="22" width="152" height="60" rx="7" fill="url(#gc)" stroke="#8b5cf6" stroke-width="1.2"/>
+      <text x="992" y="44" text-anchor="middle" fill="#a78bfa" font-family="DM Mono" font-size="10" font-weight="700">3P DATA</text>
+      <text x="992" y="58" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">LiveRamp · Acxiom</text>
+      <text x="992" y="70" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Experian · Dun &amp; B</text>
+
+      <!-- AD PLATFORMS -->
+      <rect x="1084" y="22" width="156" height="60" rx="7" fill="url(#gc)" stroke="#8b5cf6" stroke-width="1.2"/>
+      <text x="1162" y="44" text-anchor="middle" fill="#a78bfa" font-family="DM Mono" font-size="10" font-weight="700">AD PLATFORMS</text>
+      <text x="1162" y="58" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Google · Meta · Amazon</text>
+      <text x="1162" y="70" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">SA360 · DV360</text>
+
+      <!-- ── Ingestion → Stream arrows ── -->
+      <line x1="152" y1="82" x2="340" y2="155" stroke="#00d4ff"  stroke-width="1" stroke-dasharray="4,3" opacity=".4" marker-end="url(#arr)"/>
+      <line x1="320" y1="82" x2="360" y2="155" stroke="#00d4ff"  stroke-width="1" stroke-dasharray="4,3" opacity=".4" marker-end="url(#arr)"/>
+      <line x1="488" y1="82" x2="390" y2="155" stroke="#00d4ff"  stroke-width="1" stroke-dasharray="4,3" opacity=".4" marker-end="url(#arr)"/>
+      <line x1="656" y1="82" x2="630" y2="155" stroke="#f59e0b"  stroke-width="1.4" stroke-dasharray="4,3" opacity=".5" marker-end="url(#arr-amber)"/>
+      <line x1="824" y1="82" x2="660" y2="155" stroke="#00d4ff"  stroke-width="1" stroke-dasharray="4,3" opacity=".4" marker-end="url(#arr)"/>
+      <line x1="992" y1="82" x2="820" y2="155" stroke="#8b5cf6"  stroke-width="1" stroke-dasharray="4,3" opacity=".4" marker-end="url(#arr-violet)"/>
+      <line x1="1162" y1="82" x2="870" y2="155" stroke="#8b5cf6" stroke-width="1" stroke-dasharray="4,3" opacity=".4" marker-end="url(#arr-violet)"/>
+
+      <!-- ════ STREAM ROW — 4 boxes ════ -->
+      <!-- PUB/SUB -->
+      <rect x="76"  y="158" width="200" height="62" rx="7" fill="url(#gc)" stroke="#8b5cf6" stroke-width="1.5"/>
+      <text x="176" y="181" text-anchor="middle" fill="#a78bfa" font-family="DM Mono" font-size="10" font-weight="700">CLOUD PUB/SUB</text>
+      <text x="176" y="196" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Real-time Event Bus</text>
+      <text x="176" y="208" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">10M+ msgs / sec</text>
 
       <!-- DATAFLOW -->
-      <rect x="360" y="150" width="130" height="55" rx="6" fill="url(#gr-card)" stroke="#8b5cf6" stroke-width="1.5"/>
-      <text x="425" y="170" text-anchor="middle" fill="#a78bfa" font-family="DM Mono" font-size="9" font-weight="600">DATAFLOW</text>
-      <text x="425" y="184" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Beam Transforms</text>
-      <text x="425" y="196" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Enrich · Dedupe</text>
+      <rect x="300" y="158" width="200" height="62" rx="7" fill="url(#gc)" stroke="#8b5cf6" stroke-width="1.5"/>
+      <text x="400" y="181" text-anchor="middle" fill="#a78bfa" font-family="DM Mono" font-size="10" font-weight="700">DATAFLOW</text>
+      <text x="400" y="196" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Apache Beam Transforms</text>
+      <text x="400" y="208" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Enrich · Dedupe · Validate</text>
 
       <!-- CLOUD FUNCTIONS -->
-      <rect x="540" y="150" width="130" height="55" rx="6" fill="url(#gr-card)" stroke="#8b5cf6" stroke-width="1.5"/>
-      <text x="605" y="170" text-anchor="middle" fill="#a78bfa" font-family="DM Mono" font-size="9" font-weight="600">CLOUD FUNCTIONS</text>
-      <text x="605" y="184" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Validation · Rules</text>
-      <text x="605" y="196" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Consent Check</text>
+      <rect x="524" y="158" width="200" height="62" rx="7" fill="url(#gc)" stroke="#8b5cf6" stroke-width="1.5"/>
+      <text x="624" y="181" text-anchor="middle" fill="#a78bfa" font-family="DM Mono" font-size="10" font-weight="700">CLOUD FUNCTIONS</text>
+      <text x="624" y="196" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Consent Check · Rules</text>
+      <text x="624" y="208" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Schema Validation</text>
 
-      <!-- BQ BATCH -->
-      <rect x="730" y="150" width="140" height="55" rx="6" fill="url(#gr-card)" stroke="#f59e0b" stroke-width="1.5"/>
-      <text x="800" y="170" text-anchor="middle" fill="#fbbf24" font-family="DM Mono" font-size="9" font-weight="600">BIGQUERY ML</text>
-      <text x="800" y="184" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Propensity · LTV</text>
-      <text x="800" y="196" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Audience Scoring</text>
+      <!-- BQ ML -->
+      <rect x="748" y="158" width="200" height="62" rx="7" fill="url(#gc)" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="848" y="181" text-anchor="middle" fill="#fbbf24" font-family="DM Mono" font-size="10" font-weight="700">BIGQUERY ML</text>
+      <text x="848" y="196" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Propensity · LTV Scoring</text>
+      <text x="848" y="208" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Audience Segmentation</text>
 
-      <!-- H arrows layer 2 to 3 -->
-      <line x1="310" y1="177" x2="360" y2="177" stroke="#8b5cf6" stroke-width="1" stroke-dasharray="4,3" opacity=".5" marker-end="url(#arr-violet)"/>
-      <line x1="490" y1="177" x2="540" y2="177" stroke="#8b5cf6" stroke-width="1" stroke-dasharray="4,3" opacity=".5" marker-end="url(#arr-violet)"/>
-      <line x1="670" y1="177" x2="730" y2="177" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,3" opacity=".5" marker-end="url(#arr-amber)"/>
+      <!-- Stream H-arrows -->
+      <line x1="276" y1="189" x2="300" y2="189" stroke="#8b5cf6" stroke-width="1" stroke-dasharray="3,3" opacity=".5" marker-end="url(#arr-violet)"/>
+      <line x1="500" y1="189" x2="524" y2="189" stroke="#8b5cf6" stroke-width="1" stroke-dasharray="3,3" opacity=".5" marker-end="url(#arr-violet)"/>
+      <line x1="724" y1="189" x2="748" y2="189" stroke="#f59e0b" stroke-width="1" stroke-dasharray="3,3" opacity=".5" marker-end="url(#arr-amber)"/>
 
-      <!-- V arrows to storage -->
-      <line x1="425" y1="205" x2="425" y2="278" stroke="#8b5cf6" stroke-width="1" stroke-dasharray="4,3" opacity=".4" marker-end="url(#arr-violet)"/>
-      <line x1="605" y1="205" x2="540" y2="278" stroke="#00d4ff" stroke-width="1" stroke-dasharray="4,3" opacity=".4" marker-end="url(#arr)"/>
-      <line x1="800" y1="205" x2="700" y2="278" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,3" opacity=".4" marker-end="url(#arr-amber)"/>
+      <!-- Stream → Storage arrows -->
+      <line x1="400" y1="220" x2="400" y2="285" stroke="#8b5cf6"  stroke-width="1" stroke-dasharray="4,3" opacity=".4" marker-end="url(#arr-violet)"/>
+      <line x1="624" y1="220" x2="550" y2="285" stroke="#00d4ff"  stroke-width="1" stroke-dasharray="4,3" opacity=".4" marker-end="url(#arr)"/>
+      <line x1="848" y1="220" x2="760" y2="285" stroke="#f59e0b"  stroke-width="1" stroke-dasharray="4,3" opacity=".4" marker-end="url(#arr-amber)"/>
 
-      <!-- STORAGE LAYER -->
-      <rect x="90" y="280" width="130" height="65" rx="6" fill="url(#gr-card)" stroke="#f59e0b" stroke-width="2"/>
-      <text x="155" y="298" text-anchor="middle" fill="#fbbf24" font-family="DM Mono" font-size="9" font-weight="600">BIGQUERY</text>
-      <text x="155" y="311" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Event Tables</text>
-      <text x="155" y="322" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Profile Store</text>
-      <text x="155" y="333" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Audience Tables</text>
+      <!-- ════ STORAGE ROW — 5 boxes ════ -->
+      <!-- BIGQUERY -->
+      <rect x="76"  y="289" width="190" height="65" rx="7" fill="url(#gc)" stroke="#f59e0b" stroke-width="2"/>
+      <text x="171" y="312" text-anchor="middle" fill="#fbbf24" font-family="DM Mono" font-size="10" font-weight="700">BIGQUERY</text>
+      <text x="171" y="327" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Event Tables · Profile Store</text>
+      <text x="171" y="341" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Audience · Audit Tables</text>
 
-      <rect x="265" y="280" width="130" height="65" rx="6" fill="url(#gr-card)" stroke="#f59e0b" stroke-width="1.5"/>
-      <text x="330" y="298" text-anchor="middle" fill="#fbbf24" font-family="DM Mono" font-size="9" font-weight="600">FIRESTORE</text>
-      <text x="330" y="311" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Real-time Profiles</text>
-      <text x="330" y="322" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Session State</text>
-      <text x="330" y="333" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Consent Flags</text>
+      <!-- FIRESTORE -->
+      <rect x="284" y="289" width="190" height="65" rx="7" fill="url(#gc)" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="379" y="312" text-anchor="middle" fill="#fbbf24" font-family="DM Mono" font-size="10" font-weight="700">FIRESTORE</text>
+      <text x="379" y="327" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Real-time Profile Lookup</text>
+      <text x="379" y="341" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Session State · Consent</text>
 
-      <rect x="440" y="280" width="140" height="65" rx="6" fill="url(#gr-card)" stroke="#00d4ff" stroke-width="2" filter="url(#glow-cyan)"/>
-      <text x="510" y="298" text-anchor="middle" fill="#00d4ff" font-family="DM Mono" font-size="9" font-weight="700">IDENTITY GRAPH</text>
-      <text x="510" y="311" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Golden Record</text>
-      <text x="510" y="322" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Cross-Device Map</text>
-      <text x="510" y="333" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Collision Rules</text>
+      <!-- IDENTITY GRAPH -->
+      <rect x="492" y="289" width="212" height="65" rx="7" fill="url(#gc)" stroke="#00d4ff" stroke-width="2" filter="url(#glow-c)"/>
+      <text x="598" y="312" text-anchor="middle" fill="#00d4ff" font-family="DM Mono" font-size="10" font-weight="700">IDENTITY GRAPH</text>
+      <text x="598" y="327" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Golden Record · Cross-Device</text>
+      <text x="598" y="341" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Household ID · Collision Rules</text>
 
-      <rect x="630" y="280" width="130" height="65" rx="6" fill="url(#gr-card)" stroke="#8b5cf6" stroke-width="1.5"/>
-      <text x="695" y="298" text-anchor="middle" fill="#a78bfa" font-family="DM Mono" font-size="9" font-weight="600">CLOUD STORAGE</text>
-      <text x="695" y="311" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Raw Event Archive</text>
-      <text x="695" y="322" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Model Artefacts</text>
-      <text x="695" y="333" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Audience Exports</text>
+      <!-- CLOUD STORAGE -->
+      <rect x="722" y="289" width="190" height="65" rx="7" fill="url(#gc)" stroke="#8b5cf6" stroke-width="1.5"/>
+      <text x="817" y="312" text-anchor="middle" fill="#a78bfa" font-family="DM Mono" font-size="10" font-weight="700">CLOUD STORAGE</text>
+      <text x="817" y="327" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Raw Event Archive</text>
+      <text x="817" y="341" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Model Artefacts · Exports</text>
 
-      <rect x="810" y="280" width="130" height="65" rx="6" fill="url(#gr-card)" stroke="#10b981" stroke-width="1.5"/>
-      <text x="875" y="298" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="9" font-weight="600">DATA CATALOG</text>
-      <text x="875" y="311" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Schema Registry</text>
-      <text x="875" y="322" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">PII Classification</text>
-      <text x="875" y="333" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Lineage Tracking</text>
+      <!-- DATA CATALOG -->
+      <rect x="930" y="289" width="190" height="65" rx="7" fill="url(#gc)" stroke="#10b981" stroke-width="1.5"/>
+      <text x="1025" y="312" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="10" font-weight="700">DATA CATALOG</text>
+      <text x="1025" y="327" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Schema Registry · Lineage</text>
+      <text x="1025" y="341" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">PII Classification · Tags</text>
 
-      <!-- GOVERNANCE LAYER -->
-      <rect x="90" y="400" width="180" height="45" rx="6" fill="url(#gr-card)" stroke="#f43f5e" stroke-width="1.5"/>
-      <text x="180" y="418" text-anchor="middle" fill="#fb7185" font-family="DM Mono" font-size="9" font-weight="600">CONSENT ENGINE</text>
-      <text x="180" y="432" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">GDPR · PECR · TCF 2.2</text>
+      <!-- Storage → Governance arrows -->
+      <line x1="171" y1="354" x2="200" y2="413" stroke="#f43f5e" stroke-width="1" stroke-dasharray="3,3" opacity=".35" marker-end="url(#arr)"/>
+      <line x1="598" y1="354" x2="598" y2="413" stroke="#f43f5e" stroke-width="1" stroke-dasharray="3,3" opacity=".35" marker-end="url(#arr)"/>
 
-      <rect x="290" y="400" width="180" height="45" rx="6" fill="url(#gr-card)" stroke="#f43f5e" stroke-width="1.5"/>
-      <text x="380" y="418" text-anchor="middle" fill="#fb7185" font-family="DM Mono" font-size="9" font-weight="600">ACCESS CONTROL</text>
-      <text x="380" y="432" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">IAM · VPC-SC · CMEK</text>
+      <!-- ════ GOVERNANCE ROW — 4 boxes ════ -->
+      <rect x="76"  y="416" width="250" height="46" rx="7" fill="url(#gc)" stroke="#f43f5e" stroke-width="1.5"/>
+      <text x="201" y="436" text-anchor="middle" fill="#fb7185" font-family="DM Mono" font-size="10" font-weight="700">CONSENT ENGINE</text>
+      <text x="201" y="451" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">GDPR · PECR · TCF 2.2</text>
 
-      <rect x="490" y="400" width="180" height="45" rx="6" fill="url(#gr-card)" stroke="#f43f5e" stroke-width="1.5"/>
-      <text x="580" y="418" text-anchor="middle" fill="#fb7185" font-family="DM Mono" font-size="9" font-weight="600">EGRESS THROTTLE</text>
-      <text x="580" y="432" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Rate Limits · DLP · Audit</text>
+      <rect x="346" y="416" width="250" height="46" rx="7" fill="url(#gc)" stroke="#f43f5e" stroke-width="1.5"/>
+      <text x="471" y="436" text-anchor="middle" fill="#fb7185" font-family="DM Mono" font-size="10" font-weight="700">ACCESS CONTROL</text>
+      <text x="471" y="451" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">IAM · VPC-SC · CMEK</text>
 
-      <rect x="690" y="400" width="200" height="45" rx="6" fill="url(#gr-card)" stroke="#f43f5e" stroke-width="1.5"/>
-      <text x="790" y="418" text-anchor="middle" fill="#fb7185" font-family="DM Mono" font-size="9" font-weight="600">BLOCKING RULES</text>
-      <text x="790" y="432" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Suppression · DSR · Quarantine</text>
+      <rect x="616" y="416" width="250" height="46" rx="7" fill="url(#gc)" stroke="#f43f5e" stroke-width="1.5"/>
+      <text x="741" y="436" text-anchor="middle" fill="#fb7185" font-family="DM Mono" font-size="10" font-weight="700">EGRESS THROTTLE</text>
+      <text x="741" y="451" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Rate Limits · DLP · Audit Log</text>
 
-      <!-- V arrows storage → governance -->
-      <line x1="155" y1="345" x2="180" y2="400" stroke="#f43f5e" stroke-width="1" stroke-dasharray="3,3" opacity=".35" marker-end="url(#arr)"/>
-      <line x1="510" y1="345" x2="510" y2="400" stroke="#f43f5e" stroke-width="1" stroke-dasharray="3,3" opacity=".35" marker-end="url(#arr)"/>
+      <rect x="886" y="416" width="250" height="46" rx="7" fill="url(#gc)" stroke="#f43f5e" stroke-width="1.5"/>
+      <text x="1011" y="436" text-anchor="middle" fill="#fb7185" font-family="DM Mono" font-size="10" font-weight="700">BLOCKING RULES</text>
+      <text x="1011" y="451" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Suppression · DSR · Quarantine</text>
 
-      <!-- ACTIVATION LAYER -->
-      <rect x="90" y="510" width="100" height="45" rx="6" fill="url(#gr-card)" stroke="#10b981" stroke-width="1.5"/>
-      <text x="140" y="528" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="8.5" font-weight="600">GOOGLE ADS</text>
-      <text x="140" y="542" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">Customer Match</text>
+      <!-- Governance → Activation arrows -->
+      <line x1="471" y1="462" x2="400" y2="518" stroke="#10b981" stroke-width="1" stroke-dasharray="4,3" opacity=".35" marker-end="url(#arr-green)"/>
+      <line x1="741" y1="462" x2="780" y2="518" stroke="#10b981" stroke-width="1" stroke-dasharray="4,3" opacity=".35" marker-end="url(#arr-green)"/>
 
-      <rect x="205" y="510" width="100" height="45" rx="6" fill="url(#gr-card)" stroke="#10b981" stroke-width="1.5"/>
-      <text x="255" y="528" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="8.5" font-weight="600">META ADS</text>
-      <text x="255" y="542" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">CAPI · Custom Aud</text>
+      <!-- ════ ACTIVATION ROW — 7 boxes ════ -->
+      <rect x="76"  y="521" width="148" height="52" rx="7" fill="url(#gc)" stroke="#10b981" stroke-width="1.5"/>
+      <text x="150" y="542" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="10" font-weight="700">GOOGLE ADS</text>
+      <text x="150" y="556" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Customer Match · RLSA</text>
 
-      <rect x="320" y="510" width="100" height="45" rx="6" fill="url(#gr-card)" stroke="#10b981" stroke-width="1.5"/>
-      <text x="370" y="528" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="8.5" font-weight="600">AMAZON DSP</text>
-      <text x="370" y="542" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">AMC · Sponsored</text>
+      <rect x="238" y="521" width="148" height="52" rx="7" fill="url(#gc)" stroke="#10b981" stroke-width="1.5"/>
+      <text x="312" y="542" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="10" font-weight="700">META ADS</text>
+      <text x="312" y="556" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">CAPI · Custom Audiences</text>
 
-      <rect x="435" y="510" width="100" height="45" rx="6" fill="url(#gr-card)" stroke="#10b981" stroke-width="1.5"/>
-      <text x="485" y="528" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="8.5" font-weight="600">SA360</text>
-      <text x="485" y="542" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">Floodlight · Bid Adj</text>
+      <rect x="400" y="521" width="148" height="52" rx="7" fill="url(#gc)" stroke="#10b981" stroke-width="1.5"/>
+      <text x="474" y="542" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="10" font-weight="700">AMAZON DSP</text>
+      <text x="474" y="556" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">AMC · Sponsored Ads</text>
 
-      <rect x="550" y="510" width="100" height="45" rx="6" fill="url(#gr-card)" stroke="#10b981" stroke-width="1.5"/>
-      <text x="600" y="528" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="8.5" font-weight="600">mOENGAGE</text>
-      <text x="600" y="542" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">Push · Email · In-app</text>
+      <rect x="562" y="521" width="148" height="52" rx="7" fill="url(#gc)" stroke="#10b981" stroke-width="1.5"/>
+      <text x="636" y="542" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="10" font-weight="700">SA360</text>
+      <text x="636" y="556" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Floodlight · Bid Adjust</text>
 
-      <rect x="665" y="510" width="100" height="45" rx="6" fill="url(#gr-card)" stroke="#10b981" stroke-width="1.5"/>
-      <text x="715" y="528" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="8.5" font-weight="600">AMPLITUDE</text>
-      <text x="715" y="542" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">Cohorts · Funnels</text>
+      <rect x="724" y="521" width="148" height="52" rx="7" fill="url(#gc)" stroke="#10b981" stroke-width="1.5"/>
+      <text x="798" y="542" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="10" font-weight="700">mOENGAGE</text>
+      <text x="798" y="556" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Push · Email · In-App</text>
 
-      <rect x="780" y="510" width="100" height="45" rx="6" fill="url(#gr-card)" stroke="#10b981" stroke-width="1.5"/>
-      <text x="830" y="528" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="8.5" font-weight="600">APPSFLYER</text>
-      <text x="830" y="542" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">MMP · SKAN · PBA</text>
+      <rect x="886" y="521" width="148" height="52" rx="7" fill="url(#gc)" stroke="#10b981" stroke-width="1.5"/>
+      <text x="960" y="542" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="10" font-weight="700">AMPLITUDE</text>
+      <text x="960" y="556" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Cohorts · Experiments</text>
 
-      <!-- Governance to Activation arrows -->
-      <line x1="380" y1="445" x2="380" y2="510" stroke="#10b981" stroke-width="1" stroke-dasharray="4,3" opacity=".35" marker-end="url(#arr)"/>
-      <line x1="580" y1="445" x2="580" y2="510" stroke="#10b981" stroke-width="1" stroke-dasharray="4,3" opacity=".35" marker-end="url(#arr)"/>
+      <rect x="1048" y="521" width="148" height="52" rx="7" fill="url(#gc)" stroke="#10b981" stroke-width="1.5"/>
+      <text x="1122" y="542" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="10" font-weight="700">APPSFLYER</text>
+      <text x="1122" y="556" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">MMP · SKAN · PBA</text>
 
-      <!-- Animated flow dots -->
-      <circle class="stream-dot" r="3" fill="#00d4ff" style="--travel:100px">
-        <animateMotion dur="2s" repeatCount="indefinite" path="M140,70 Q300,110 425,150"/>
+      <!-- ── Animated flow dots ── -->
+      <circle r="3.5" fill="#00d4ff">
+        <animateMotion dur="2.2s" repeatCount="indefinite" path="M152,82 Q270,118 340,158"/>
       </circle>
-      <circle class="stream-dot" r="3" fill="#f59e0b" style="--travel:100px">
-        <animateMotion dur="1.8s" repeatCount="indefinite" begin="0.6s" path="M485,70 L480,150"/>
+      <circle r="3.5" fill="#f59e0b">
+        <animateMotion dur="1.9s" repeatCount="indefinite" begin=".5s" path="M656,82 L630,158"/>
       </circle>
-      <circle class="stream-dot" r="3" fill="#8b5cf6" style="--travel:100px">
-        <animateMotion dur="2.2s" repeatCount="indefinite" begin="1.1s" path="M425,205 L425,280"/>
+      <circle r="3.5" fill="#8b5cf6">
+        <animateMotion dur="2.4s" repeatCount="indefinite" begin="1s" path="M400,220 L400,289"/>
       </circle>
-      <circle class="stream-dot" r="3" fill="#10b981" style="--travel:100px">
-        <animateMotion dur="2.5s" repeatCount="indefinite" begin="0.3s" path="M510,345 L510,400"/>
+      <circle r="3.5" fill="#10b981">
+        <animateMotion dur="2.8s" repeatCount="indefinite" begin=".3s" path="M598,354 L598,416"/>
       </circle>
-      <circle class="stream-dot" r="3" fill="#10b981" style="--travel:100px">
-        <animateMotion dur="3s" repeatCount="indefinite" begin="1s" path="M380,445 L380,510"/>
+      <circle r="3.5" fill="#10b981">
+        <animateMotion dur="3s" repeatCount="indefinite" begin="1.2s" path="M471,462 L400,521"/>
       </circle>
     </svg>
   </div>
@@ -1310,106 +1323,360 @@ egress_config:
 
   <div class="inner-tabs">
     <div class="inner-tab active" onclick="switchInner('identity','graph')">Identity Graph</div>
+    <div class="inner-tab" onclick="switchInner('identity','realflow')" style="color:var(--emerald);border-color:rgba(16,185,129,.35)">▶ Real-Life Flow</div>
     <div class="inner-tab" onclick="switchInner('identity','collision')">Collision Strategy</div>
     <div class="inner-tab" onclick="switchInner('identity','rollback')">⏪ Fallback & Rollback</div>
     <div class="inner-tab" onclick="switchInner('identity','schema')">Data Model</div>
     <div class="inner-tab" onclick="switchInner('identity','limits')">Limitations</div>
   </div>
 
+  <!-- ══ REAL-LIFE FLOW PANEL ══ -->
+  <div id="identity-realflow" class="inner-panel">
+
+    <!-- Header -->
+    <div style="margin-bottom:1.4rem">
+      <p class="sec-desc" style="max-width:100%">A walkthrough of how <strong style="color:var(--cyan)">Marcus</strong> gets identified and cross-device stitched in real time — starting from a <strong style="color:var(--amber)">tablet session</strong>, then progressing through a <strong style="color:var(--rose)">desktop login</strong>. Every step maps to a live Firestore write, sGTM decision, and CDP profile update.</p>
+    </div>
+
+    <!-- Step controls -->
+    <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:1.2rem;flex-wrap:wrap">
+      <button onclick="rfPrev()" id="rf-btn-prev" style="padding:.45rem 1.1rem;background:var(--card);border:1px solid var(--border2);border-radius:6px;color:var(--muted2);font-family:'DM Mono',monospace;font-size:.75rem;cursor:pointer">◀ Prev</button>
+      <button onclick="rfNext()" id="rf-btn-next" style="padding:.45rem 1.1rem;background:var(--cyan);border:none;border-radius:6px;color:var(--bg);font-family:'DM Mono',monospace;font-size:.75rem;font-weight:600;cursor:pointer">Next ▶</button>
+      <button onclick="rfAuto()" id="rf-btn-auto" style="padding:.45rem 1.1rem;background:var(--card);border:1px solid var(--emerald);border-radius:6px;color:var(--emerald);font-family:'DM Mono',monospace;font-size:.75rem;cursor:pointer">▶ Auto-Play</button>
+      <button onclick="rfReset()" style="padding:.45rem 1.1rem;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--muted2);font-family:'DM Mono',monospace;font-size:.75rem;cursor:pointer">↺ Reset</button>
+      <div style="margin-left:.5rem;display:flex;gap:.35rem;align-items:center" id="rf-dots"></div>
+      <div style="margin-left:auto;font-family:'Orbitron',monospace;font-size:.75rem;color:var(--cyan)" id="rf-step-label">Step 1 / 7</div>
+    </div>
+
+    <!-- Main visual canvas -->
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;position:relative;overflow:hidden">
+      <svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;opacity:.04" xmlns="http://www.w3.org/2000/svg">
+        <defs><pattern id="rf-grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40,0 L0,0 0,40" fill="none" stroke="#00d4ff" stroke-width="0.5"/></pattern></defs>
+        <rect width="100%" height="100%" fill="url(#rf-grid)"/>
+      </svg>
+
+      <!-- Step title + description -->
+      <div style="margin-bottom:1.2rem;padding-bottom:1rem;border-bottom:1px solid var(--border)">
+        <div style="font-family:'Orbitron',monospace;font-size:.9rem;font-weight:700;margin-bottom:.4rem" id="rf-title">Step 1 — Existing Mobile Session</div>
+        <div style="font-size:.78rem;color:var(--muted2);line-height:1.7;max-width:820px" id="rf-desc">Marcus previously signed in on his <strong style="color:var(--amber)">tablet</strong>. Firestore already holds document <code style="color:var(--cyan)">Profile_M1</code> linking <code style="color:var(--amber)">Tablet_iPad7</code> to his authenticated account ID <code style="color:var(--emerald)">marcus_id_447</code>. One device, one profile, already stitched.</div>
+      </div>
+
+      <!-- 3-column layout: Tablet | sGTM+Firestore | Desktop -->
+      <div style="display:grid;grid-template-columns:220px 1fr 220px;gap:1rem;align-items:start;min-height:340px">
+
+        <!-- LEFT: Tablet (known device) -->
+        <div>
+          <div style="font-size:.62rem;text-transform:uppercase;letter-spacing:.15em;color:var(--muted);margin-bottom:.6rem;text-align:center">Marcus's Tablet</div>
+          <div id="rf-phone" style="background:var(--bg3);border:2px solid var(--amber);border-radius:10px;padding:1rem;transition:all .4s">
+            <div style="text-align:center;font-size:1.6rem;margin-bottom:.5rem">📱</div>
+            <div style="font-size:.68rem;line-height:1.9;font-family:'DM Mono',monospace">
+              <div><span style="color:var(--muted)">Device ID:</span> <span style="color:var(--amber)" id="rf-phone-did">Tablet_iPad7</span></div>
+              <div><span style="color:var(--muted)">User ID:</span> <span style="color:var(--emerald)" id="rf-phone-uid">marcus_id_447</span></div>
+              <div><span style="color:var(--muted)">master_id:</span> <span style="color:var(--cyan)" id="rf-phone-mid">Profile_M1</span></div>
+              <div><span style="color:var(--muted)">State:</span> <span id="rf-phone-state" style="color:var(--emerald)">Identified ✓</span></div>
+            </div>
+          </div>
+          <div style="margin-top:.8rem;font-size:.63rem;color:var(--muted);text-align:center;font-style:italic" id="rf-phone-event"></div>
+        </div>
+
+        <!-- CENTRE: sGTM + Firestore + message -->
+        <div style="display:flex;flex-direction:column;gap:.8rem;align-items:center">
+          <div id="rf-sgtm" style="background:var(--bg3);border:2px solid var(--violet);border-radius:10px;padding:.9rem 1.2rem;width:100%;text-align:center;transition:all .4s;position:relative">
+            <div style="font-family:'Orbitron',monospace;font-size:.78rem;font-weight:700;color:var(--violet);margin-bottom:.3rem">sGTM + CDP Engine</div>
+            <div style="font-size:.65rem;color:var(--muted2)">Server-Side Tag Manager · Cloud Function</div>
+            <div style="font-size:.67rem;color:var(--muted);margin-top:.4rem;min-height:1.2rem" id="rf-sgtm-action"></div>
+            <div id="rf-sgtm-ring" style="display:none;position:absolute;inset:-4px;border-radius:12px;border:2px solid var(--violet);animation:sgtmPulse .8s ease infinite;pointer-events:none"></div>
+          </div>
+
+          <div id="rf-firestore" style="background:var(--bg3);border:2px solid var(--cyan);border-radius:10px;padding:1rem 1.2rem;width:100%;transition:all .4s">
+            <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.7rem">
+              <span style="font-size:.9rem">🗄️</span>
+              <div>
+                <div style="font-family:'Orbitron',monospace;font-size:.72rem;font-weight:700;color:var(--cyan)">Firestore</div>
+                <div style="font-size:.6rem;color:var(--muted)">Document: <span style="color:var(--cyan)" id="rf-doc-id">Profile_M1</span></div>
+              </div>
+              <div style="margin-left:auto;font-size:.6rem;padding:.15rem .5rem;border-radius:4px;border:1px solid;color:var(--emerald);border-color:var(--emerald)" id="rf-doc-status">EXISTS</div>
+            </div>
+            <div style="font-family:'DM Mono',monospace;font-size:.67rem;line-height:1.8;background:var(--bg);border-radius:6px;padding:.7rem .9rem">
+              <div style="color:var(--muted);margin-bottom:.3rem">aliases: [</div>
+              <div id="rf-alias-phone" style="padding-left:1rem;transition:all .5s"><span style="color:var(--amber)">Tablet_iPad7</span> <span style="color:var(--muted);font-size:.6rem">// mobile device</span></div>
+              <div id="rf-alias-uid" style="padding-left:1rem;transition:all .5s"><span style="color:var(--emerald)">marcus_id_447</span> <span style="color:var(--muted);font-size:.6rem">// auth account</span></div>
+              <div id="rf-alias-laptop" style="padding-left:1rem;opacity:0;transition:all .5s;height:0;overflow:hidden"><span style="color:var(--rose)">Desktop_Win11</span> <span style="color:var(--muted);font-size:.6rem">// new device ← arrayUnion</span></div>
+              <div style="color:var(--muted)">]</div>
+              <div style="margin-top:.4rem"><span style="color:var(--muted)">master_id:</span> <span style="color:var(--cyan)">"Profile_M1"</span></div>
+              <div id="rf-cookie-line" style="opacity:0;transition:all .5s;height:0;overflow:hidden"><span style="color:var(--muted)">cookie_set:</span> <span style="color:var(--emerald)">"Desktop → Profile_M1"</span></div>
+            </div>
+          </div>
+
+          <div id="rf-flow-msg" style="font-size:.7rem;color:var(--cyan);text-align:center;min-height:2.2rem;font-family:'DM Mono',monospace;padding:.4rem;background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.15);border-radius:6px;width:100%;line-height:1.6"></div>
+        </div>
+
+        <!-- RIGHT: Desktop (new device) -->
+        <div>
+          <div style="font-size:.62rem;text-transform:uppercase;letter-spacing:.15em;color:var(--muted);margin-bottom:.6rem;text-align:center">Marcus's Desktop</div>
+          <div id="rf-laptop" style="background:var(--bg3);border:2px solid var(--border2);border-radius:10px;padding:1rem;transition:all .4s">
+            <div style="text-align:center;font-size:1.6rem;margin-bottom:.5rem">💻</div>
+            <div style="font-size:.68rem;line-height:1.9;font-family:'DM Mono',monospace">
+              <div><span style="color:var(--muted)">Device ID:</span> <span style="color:var(--rose)" id="rf-laptop-did">Desktop_Win11</span></div>
+              <div><span style="color:var(--muted)">User ID:</span> <span style="color:var(--muted2)" id="rf-laptop-uid">null</span></div>
+              <div><span style="color:var(--muted)">master_id:</span> <span style="color:var(--muted2)" id="rf-laptop-mid">null</span></div>
+              <div><span style="color:var(--muted)">State:</span> <span id="rf-laptop-state" style="color:var(--muted2)">Anonymous</span></div>
+            </div>
+          </div>
+          <div style="margin-top:.8rem;font-size:.63rem;color:var(--muted);text-align:center;font-style:italic" id="rf-laptop-event"></div>
+        </div>
+      </div>
+
+      <svg id="rf-arrows" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+
+    <div style="margin-top:1.2rem" id="rf-detail-card"></div>
+    <div style="margin-top:1rem" id="rf-code-block"></div>
+
+  </div>
+  <!-- ══ END REAL-LIFE FLOW PANEL ══ -->
+
+
   <div id="identity-graph" class="inner-panel active">
-    <div class="arch-svg-wrap">
-      <svg viewBox="0 0 900 350" xmlns="http://www.w3.org/2000/svg" style="width:100%;min-width:700px">
+    <!-- Confidence legend — OUTSIDE the SVG so it never overlaps -->
+    <div style="display:flex;gap:1.4rem;flex-wrap:wrap;margin-bottom:.9rem;padding:.7rem 1rem;background:var(--bg3);border:1px solid var(--border);border-radius:8px;align-items:center">
+      <span style="font-size:.65rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:600">Confidence Tiers</span>
+      <span style="display:flex;align-items:center;gap:.35rem;font-size:.72rem;color:var(--muted2)"><span style="width:10px;height:10px;border-radius:50%;background:#10b981;display:inline-block;flex-shrink:0"></span>HIGH — Deterministic (email, phone, CRM, loyalty)</span>
+      <span style="display:flex;align-items:center;gap:.35rem;font-size:.72rem;color:var(--muted2)"><span style="width:10px;height:10px;border-radius:50%;background:#00d4ff;display:inline-block;flex-shrink:0"></span>MEDIUM — Device ID (GAID, IDFA, IDFV)</span>
+      <span style="display:flex;align-items:center;gap:.35rem;font-size:.72rem;color:var(--muted2)"><span style="width:10px;height:10px;border-radius:50%;background:#f59e0b;display:inline-block;flex-shrink:0"></span>MEDIUM-LOW — On-Device Signals (fingerprint, SDK)</span>
+      <span style="display:flex;align-items:center;gap:.35rem;font-size:.72rem;color:var(--muted2)"><span style="width:10px;height:10px;border-radius:50%;background:#f43f5e;display:inline-block;flex-shrink:0"></span>LOW — Probabilistic (cookie, postcode)</span>
+      <span style="display:flex;align-items:center;gap:.35rem;font-size:.72rem;color:var(--muted2)"><span style="width:10px;height:10px;border-radius:50%;background:#8b5cf6;display:inline-block;flex-shrink:0"></span>HOUSEHOLD — Address + Email + Phone cluster</span>
+    </div>
+
+    <div class="arch-svg-wrap" style="overflow-x:auto;padding:0">
+      <svg viewBox="0 0 1340 760" xmlns="http://www.w3.org/2000/svg" style="width:100%;min-width:1060px;display:block">
         <defs>
-          <marker id="aid" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3 z" fill="#8b5cf6" opacity=".8"/></marker>
+          <marker id="aid"  markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#8b5cf6" opacity=".85"/></marker>
+          <marker id="aid-c" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#00d4ff" opacity=".85"/></marker>
+          <marker id="aid-g" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#10b981" opacity=".85"/></marker>
+          <marker id="aid-a" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#f59e0b" opacity=".85"/></marker>
+          <marker id="aid-r" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#f43f5e" opacity=".85"/></marker>
+          <marker id="aid-v" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#8b5cf6" opacity=".85"/></marker>
+          <filter id="gc-glow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          <filter id="fs-glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          <linearGradient id="idgc" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#111d30"/><stop offset="100%" stop-color="#0a1220"/>
+          </linearGradient>
         </defs>
 
-        <!-- Central Golden Record -->
-        <circle cx="450" cy="175" r="55" fill="rgba(0,212,255,0.08)" stroke="#00d4ff" stroke-width="2"/>
-        <circle cx="450" cy="175" r="45" fill="rgba(0,212,255,0.05)" stroke="#00d4ff" stroke-width="1" stroke-dasharray="4,3">
-          <animateTransform attributeName="transform" type="rotate" from="0 450 175" to="360 450 175" dur="20s" repeatCount="indefinite"/>
+        <!-- ══ SECTION LABELS ══ -->
+        <text x="30" y="105" fill="#1e3a5f" font-family="DM Mono" font-size="9" font-weight="600" letter-spacing="2">DETERMINISTIC</text>
+        <text x="30" y="320" fill="#1e3a5f" font-family="DM Mono" font-size="9" font-weight="600" letter-spacing="2">DEVICE IDs</text>
+        <text x="30" y="530" fill="#1e3a5f" font-family="DM Mono" font-size="9" font-weight="600" letter-spacing="2">PROBABILISTIC</text>
+        <text x="1000" y="170" fill="#1e3a5f" font-family="DM Mono" font-size="9" font-weight="600" letter-spacing="2">ON-DEVICE SDK</text>
+        <text x="1000" y="420" fill="#1e3a5f" font-family="DM Mono" font-size="9" font-weight="600" letter-spacing="2">HOUSEHOLD</text>
+        <text x="1000" y="600" fill="#1e3a5f" font-family="DM Mono" font-size="9" font-weight="600" letter-spacing="2">STORAGE</text>
+
+        <!-- ══ GOLDEN RECORD — centre ══ -->
+        <circle cx="590" cy="380" r="70" fill="rgba(0,212,255,0.06)" stroke="#00d4ff" stroke-width="2.5" filter="url(#gc-glow)"/>
+        <circle cx="590" cy="380" r="56" fill="rgba(0,212,255,0.04)" stroke="#00d4ff" stroke-width="1" stroke-dasharray="5,4">
+          <animateTransform attributeName="transform" type="rotate" from="0 590 380" to="360 590 380" dur="22s" repeatCount="indefinite"/>
         </circle>
-        <text x="450" y="168" text-anchor="middle" fill="#00d4ff" font-family="Orbitron" font-size="10" font-weight="700">GOLDEN</text>
-        <text x="450" y="182" text-anchor="middle" fill="#00d4ff" font-family="Orbitron" font-size="10" font-weight="700">RECORD</text>
-        <text x="450" y="196" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">uid: usr_8f2a9c</text>
-
-        <!-- Identity Nodes -->
-        <g>
-          <ellipse cx="160" cy="60" rx="70" ry="28" fill="#0d1627" stroke="#8b5cf6" stroke-width="1.5"/>
-          <text x="160" y="55" text-anchor="middle" fill="#a78bfa" font-family="DM Mono" font-size="8.5" font-weight="600">EMAIL SHA256</text>
-          <text x="160" y="68" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">a3d9c...f84e2</text>
-          <text x="160" y="78" text-anchor="middle" fill="#10b981" font-family="DM Mono" font-size="6.5">DETERMINISTIC · HIGH</text>
-        </g>
-
-        <g>
-          <ellipse cx="160" cy="160" rx="70" ry="28" fill="#0d1627" stroke="#8b5cf6" stroke-width="1.5"/>
-          <text x="160" y="155" text-anchor="middle" fill="#a78bfa" font-family="DM Mono" font-size="8.5" font-weight="600">PHONE SHA256</text>
-          <text x="160" y="168" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">b7f12...c93a1</text>
-          <text x="160" y="178" text-anchor="middle" fill="#10b981" font-family="DM Mono" font-size="6.5">DETERMINISTIC · HIGH</text>
-        </g>
-
-        <g>
-          <ellipse cx="160" cy="260" rx="70" ry="28" fill="#0d1627" stroke="#8b5cf6" stroke-width="1.5"/>
-          <text x="160" y="255" text-anchor="middle" fill="#a78bfa" font-family="DM Mono" font-size="8.5" font-weight="600">LOYALTY ID</text>
-          <text x="160" y="268" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">LYL_0092837</text>
-          <text x="160" y="278" text-anchor="middle" fill="#10b981" font-family="DM Mono" font-size="6.5">DETERMINISTIC · HIGH</text>
-        </g>
-
-        <g>
-          <ellipse cx="740" cy="60" rx="70" ry="28" fill="#0d1627" stroke="#00d4ff" stroke-width="1.5"/>
-          <text x="740" y="55" text-anchor="middle" fill="#67e8f9" font-family="DM Mono" font-size="8.5" font-weight="600">GAID / IDFA</text>
-          <text x="740" y="68" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">4f3a2b1c-...99cd</text>
-          <text x="740" y="78" text-anchor="middle" fill="#f59e0b" font-family="DM Mono" font-size="6.5">DEVICE · MEDIUM</text>
-        </g>
-
-        <g>
-          <ellipse cx="740" cy="160" rx="70" ry="28" fill="#0d1627" stroke="#00d4ff" stroke-width="1.5"/>
-          <text x="740" y="155" text-anchor="middle" fill="#67e8f9" font-family="DM Mono" font-size="8.5" font-weight="600">CRM ID</text>
-          <text x="740" y="168" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">SF_CONTACT_00X9</text>
-          <text x="740" y="178" text-anchor="middle" fill="#10b981" font-family="DM Mono" font-size="6.5">DETERMINISTIC · HIGH</text>
-        </g>
-
-        <g>
-          <ellipse cx="740" cy="260" rx="70" ry="28" fill="#0d1627" stroke="#00d4ff" stroke-width="1.5"/>
-          <text x="740" y="255" text-anchor="middle" fill="#67e8f9" font-family="DM Mono" font-size="8.5" font-weight="600">COOKIE / FPC</text>
-          <text x="740" y="268" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">_ga=2.123...789</text>
-          <text x="740" y="278" text-anchor="middle" fill="#f43f5e" font-family="DM Mono" font-size="6.5">PROBABILISTIC · LOW</text>
-        </g>
-
-        <g>
-          <ellipse cx="450" cy="320" rx="70" ry="22" fill="#0d1627" stroke="#f59e0b" stroke-width="1.5"/>
-          <text x="450" y="315" text-anchor="middle" fill="#fbbf24" font-family="DM Mono" font-size="8.5" font-weight="600">HASHED POSTCODE</text>
-          <text x="450" y="328" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">PROBABILISTIC · LOW</text>
-        </g>
-
-        <!-- Connecting lines -->
-        <line x1="230" y1="70" x2="395" y2="145" stroke="#8b5cf6" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#aid)" opacity=".6"/>
-        <line x1="230" y1="160" x2="395" y2="170" stroke="#8b5cf6" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#aid)" opacity=".6"/>
-        <line x1="230" y1="255" x2="395" y2="195" stroke="#8b5cf6" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#aid)" opacity=".6"/>
-        <line x1="505" y1="145" x2="670" y2="70" stroke="#00d4ff" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#aid)" opacity=".6"/>
-        <line x1="505" y1="170" x2="670" y2="160" stroke="#00d4ff" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#aid)" opacity=".6"/>
-        <line x1="505" y1="195" x2="670" y2="250" stroke="#00d4ff" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#aid)" opacity=".6"/>
-        <line x1="450" y1="230" x2="450" y2="298" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#aid)" opacity=".5"/>
-
-        <!-- Animated traversal dots -->
-        <circle r="3.5" fill="#a78bfa" opacity=".8">
-          <animateMotion dur="3s" repeatCount="indefinite" path="M230,70 Q310,110 395,145"/>
+        <circle cx="590" cy="380" r="40" fill="rgba(0,212,255,0.03)" stroke="#00d4ff" stroke-width="0.5" stroke-dasharray="3,5">
+          <animateTransform attributeName="transform" type="rotate" from="360 590 380" to="0 590 380" dur="14s" repeatCount="indefinite"/>
         </circle>
-        <circle r="3.5" fill="#00d4ff" opacity=".8">
-          <animateMotion dur="2.5s" repeatCount="indefinite" begin=".8s" path="M505,170 Q590,165 670,160"/>
-        </circle>
-        <circle r="3.5" fill="#f59e0b" opacity=".8">
-          <animateMotion dur="2s" repeatCount="indefinite" begin="1.5s" path="M450,230 L450,298"/>
-        </circle>
+        <text x="590" y="368" text-anchor="middle" fill="#00d4ff" font-family="DM Mono" font-size="11" font-weight="700">GOLDEN</text>
+        <text x="590" y="384" text-anchor="middle" fill="#00d4ff" font-family="DM Mono" font-size="11" font-weight="700">RECORD</text>
+        <text x="590" y="398" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">GCP Identity Graph</text>
+        <text x="590" y="411" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">uid: usr_8f2a9c_unified</text>
 
-        <!-- Confidence legend -->
-        <rect x="10" y="10" width="120" height="60" rx="5" fill="rgba(13,22,39,0.8)" stroke="#1a2d4a" stroke-width="1"/>
-        <text x="20" y="27" fill="#94a3b8" font-family="DM Mono" font-size="7" font-weight="600">CONFIDENCE TIERS</text>
-        <circle cx="22" cy="38" r="4" fill="#10b981"/>
-        <text x="30" y="42" fill="#64748b" font-family="DM Mono" font-size="7">HIGH — Deterministic</text>
-        <circle cx="22" cy="52" r="4" fill="#f59e0b"/>
-        <text x="30" y="56" fill="#64748b" font-family="DM Mono" font-size="7">MEDIUM — Device ID</text>
-        <circle cx="22" cy="66" r="4" fill="#f43f5e"/>
-        <text x="30" y="70" fill="#64748b" font-family="DM Mono" font-size="7">LOW — Probabilistic</text>
+        <!-- ══════════════════════════════════════
+             LEFT COLUMN — DETERMINISTIC (green)
+             Ellipses: rx=108, ry=30, well-spaced
+        ══════════════════════════════════════ -->
+
+        <!-- EMAIL SHA256 -->
+        <ellipse cx="200" cy="90" rx="108" ry="30" fill="url(#idgc)" stroke="#10b981" stroke-width="1.8"/>
+        <text x="200" y="84" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="10" font-weight="700">EMAIL SHA256</text>
+        <text x="200" y="98" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">a3d9c...f84e2</text>
+        <text x="200" y="110" text-anchor="middle" fill="#10b981" font-family="DM Mono" font-size="7.5">DETERMINISTIC · HIGH</text>
+
+        <!-- PHONE SHA256 -->
+        <ellipse cx="200" cy="190" rx="108" ry="30" fill="url(#idgc)" stroke="#10b981" stroke-width="1.8"/>
+        <text x="200" y="184" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="10" font-weight="700">PHONE SHA256</text>
+        <text x="200" y="198" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">b7f12...c93a1</text>
+        <text x="200" y="210" text-anchor="middle" fill="#10b981" font-family="DM Mono" font-size="7.5">DETERMINISTIC · HIGH</text>
+
+        <!-- LOYALTY ID -->
+        <ellipse cx="200" cy="290" rx="108" ry="30" fill="url(#idgc)" stroke="#10b981" stroke-width="1.8"/>
+        <text x="200" y="284" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="10" font-weight="700">LOYALTY ID</text>
+        <text x="200" y="298" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">LYL_0092837</text>
+        <text x="200" y="310" text-anchor="middle" fill="#10b981" font-family="DM Mono" font-size="7.5">DETERMINISTIC · HIGH</text>
+
+        <!-- CRM ID -->
+        <ellipse cx="200" cy="390" rx="108" ry="30" fill="url(#idgc)" stroke="#10b981" stroke-width="1.8"/>
+        <text x="200" y="384" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="10" font-weight="700">CRM ID</text>
+        <text x="200" y="398" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">SF_CONTACT_00X9</text>
+        <text x="200" y="410" text-anchor="middle" fill="#10b981" font-family="DM Mono" font-size="7.5">DETERMINISTIC · HIGH</text>
+
+        <!-- ══════════════════════════════════════
+             LEFT-MID COLUMN — DEVICE IDs (cyan)
+        ══════════════════════════════════════ -->
+
+        <!-- GAID -->
+        <ellipse cx="200" cy="490" rx="108" ry="30" fill="url(#idgc)" stroke="#00d4ff" stroke-width="1.8"/>
+        <text x="200" y="484" text-anchor="middle" fill="#67e8f9" font-family="DM Mono" font-size="10" font-weight="700">GAID</text>
+        <text x="200" y="498" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">4f3a2b1c-9d8e-...cd</text>
+        <text x="200" y="510" text-anchor="middle" fill="#00d4ff" font-family="DM Mono" font-size="7.5">ANDROID AD ID · MED</text>
+
+        <!-- IDFA -->
+        <ellipse cx="200" cy="580" rx="108" ry="30" fill="url(#idgc)" stroke="#00d4ff" stroke-width="1.8"/>
+        <text x="200" y="574" text-anchor="middle" fill="#67e8f9" font-family="DM Mono" font-size="10" font-weight="700">IDFA</text>
+        <text x="200" y="588" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">E621E1F8-C36C-...F8</text>
+        <text x="200" y="600" text-anchor="middle" fill="#00d4ff" font-family="DM Mono" font-size="7.5">iOS AD ID · MEDIUM</text>
+
+        <!-- IDFV -->
+        <ellipse cx="200" cy="670" rx="108" ry="30" fill="url(#idgc)" stroke="#00d4ff" stroke-width="1.8"/>
+        <text x="200" y="664" text-anchor="middle" fill="#67e8f9" font-family="DM Mono" font-size="10" font-weight="700">IDFV</text>
+        <text x="200" y="678" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">A1B2C3D4-...7890</text>
+        <text x="200" y="690" text-anchor="middle" fill="#00d4ff" font-family="DM Mono" font-size="7.5">iOS VENDOR ID · MED</text>
+
+        <!-- ══════════════════════════════════════
+             TOP-CENTRE — FINGERPRINT / PROBABILISTIC
+        ══════════════════════════════════════ -->
+
+        <!-- FINGERPRINT HASH -->
+        <ellipse cx="430" cy="55" rx="122" ry="30" fill="url(#idgc)" stroke="#f43f5e" stroke-width="1.8"/>
+        <text x="430" y="49" text-anchor="middle" fill="#fb7185" font-family="DM Mono" font-size="10" font-weight="700">FINGERPRINT HASH</text>
+        <text x="430" y="63" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Canvas + Audio + Font hash</text>
+        <text x="430" y="75" text-anchor="middle" fill="#f43f5e" font-family="DM Mono" font-size="7.5">PROBABILISTIC · LOW</text>
+
+        <!-- COOKIE / FPC -->
+        <ellipse cx="720" cy="55" rx="108" ry="30" fill="url(#idgc)" stroke="#f43f5e" stroke-width="1.8"/>
+        <text x="720" y="49" text-anchor="middle" fill="#fb7185" font-family="DM Mono" font-size="10" font-weight="700">COOKIE / FPC</text>
+        <text x="720" y="63" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">_ga=2.123...789</text>
+        <text x="720" y="75" text-anchor="middle" fill="#f43f5e" font-family="DM Mono" font-size="7.5">PROBABILISTIC · LOW</text>
+
+        <!-- ══════════════════════════════════════
+             RIGHT COLUMN — ON-DEVICE SDK SIGNALS (amber)
+             Stacked vertically, right side
+        ══════════════════════════════════════ -->
+
+        <!-- ON-DEVICE SDK GROUP BOX -->
+        <rect x="958" y="80" width="280" height="270" rx="10" fill="rgba(245,158,11,0.04)" stroke="rgba(245,158,11,0.2)" stroke-width="1" stroke-dasharray="6,4"/>
+        <text x="1098" y="74" text-anchor="middle" fill="#f59e0b" font-family="DM Mono" font-size="8.5" font-weight="600" letter-spacing="1">ON-DEVICE SDK SIGNALS</text>
+
+        <rect x="968" y="90"  width="260" height="34" rx="6" fill="url(#idgc)" stroke="#f59e0b" stroke-width="1.2"/>
+        <text x="1098" y="104" text-anchor="middle" fill="#fbbf24" font-family="DM Mono" font-size="9" font-weight="600">SCREEN RESOLUTION</text>
+        <text x="1098" y="116" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">1920×1080 · DPR 2.0</text>
+
+        <rect x="968" y="134" width="260" height="34" rx="6" fill="url(#idgc)" stroke="#f59e0b" stroke-width="1.2"/>
+        <text x="1098" y="148" text-anchor="middle" fill="#fbbf24" font-family="DM Mono" font-size="9" font-weight="600">OS VERSION</text>
+        <text x="1098" y="160" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">iOS 17.2 · Android 14</text>
+
+        <rect x="968" y="178" width="260" height="34" rx="6" fill="url(#idgc)" stroke="#f59e0b" stroke-width="1.2"/>
+        <text x="1098" y="192" text-anchor="middle" fill="#fbbf24" font-family="DM Mono" font-size="9" font-weight="600">NETWORK CARRIER</text>
+        <text x="1098" y="204" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">EE UK · Vodafone · O2</text>
+
+        <rect x="968" y="222" width="260" height="34" rx="6" fill="url(#idgc)" stroke="#f59e0b" stroke-width="1.2"/>
+        <text x="1098" y="236" text-anchor="middle" fill="#fbbf24" font-family="DM Mono" font-size="9" font-weight="600">TIMESTAMP PATTERN</text>
+        <text x="1098" y="248" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Session cadence · TZ offset</text>
+
+        <rect x="968" y="266" width="260" height="34" rx="6" fill="url(#idgc)" stroke="#f59e0b" stroke-width="1.2"/>
+        <text x="1098" y="280" text-anchor="middle" fill="#fbbf24" font-family="DM Mono" font-size="9" font-weight="600">USER AGENT / BROWSER</text>
+        <text x="1098" y="292" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Chrome 120 · WebKit</text>
+
+        <rect x="968" y="310" width="260" height="34" rx="6" fill="url(#idgc)" stroke="#f59e0b" stroke-width="1.2"/>
+        <text x="1098" y="324" text-anchor="middle" fill="#fbbf24" font-family="DM Mono" font-size="9" font-weight="600">LANGUAGE / LOCALE</text>
+        <text x="1098" y="336" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">en-GB · Europe/London</text>
+
+        <!-- SDK → Golden Record arrow -->
+        <line x1="958" y1="225" x2="662" y2="360" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="5,4" opacity=".5" marker-end="url(#aid-a)"/>
+
+        <!-- ══════════════════════════════════════
+             RIGHT-MID — HOUSEHOLD ID (violet)
+        ══════════════════════════════════════ -->
+
+        <!-- HOUSEHOLD GROUP BOX -->
+        <rect x="958" y="400" width="280" height="200" rx="10" fill="rgba(139,92,246,0.05)" stroke="rgba(139,92,246,0.25)" stroke-width="1.5"/>
+        <text x="1098" y="394" text-anchor="middle" fill="#a78bfa" font-family="DM Mono" font-size="8.5" font-weight="600" letter-spacing="1">HOUSEHOLD PROFILE</text>
+
+        <rect x="968" y="410" width="260" height="40" rx="6" fill="url(#idgc)" stroke="#8b5cf6" stroke-width="1.5"/>
+        <text x="1098" y="428" text-anchor="middle" fill="#a78bfa" font-family="DM Mono" font-size="10" font-weight="700">HOUSEHOLD ID</text>
+        <text x="1098" y="443" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">HH_SW1A_2AA_0091</text>
+
+        <rect x="968" y="462" width="260" height="34" rx="6" fill="url(#idgc)" stroke="#8b5cf6" stroke-width="1.2"/>
+        <text x="1098" y="476" text-anchor="middle" fill="#a78bfa" font-family="DM Mono" font-size="9" font-weight="600">PRIMARY EMAIL</text>
+        <text x="1098" y="488" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">sha256 → household anchor</text>
+
+        <rect x="968" y="506" width="260" height="34" rx="6" fill="url(#idgc)" stroke="#8b5cf6" stroke-width="1.2"/>
+        <text x="1098" y="520" text-anchor="middle" fill="#a78bfa" font-family="DM Mono" font-size="9" font-weight="600">POSTCODE (HASHED)</text>
+        <text x="1098" y="532" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">SW1A 2AA → cluster key</text>
+
+        <rect x="968" y="550" width="260" height="34" rx="6" fill="url(#idgc)" stroke="#8b5cf6" stroke-width="1.2"/>
+        <text x="1098" y="564" text-anchor="middle" fill="#a78bfa" font-family="DM Mono" font-size="9" font-weight="600">LINKED MEMBERS</text>
+        <text x="1098" y="576" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Parent · Spouse · Child UIDs</text>
+
+        <!-- Household → Golden Record -->
+        <line x1="958" y1="480" x2="662" y2="400" stroke="#8b5cf6" stroke-width="1.5" stroke-dasharray="5,4" opacity=".6" marker-end="url(#aid-v)"/>
+
+        <!-- ══════════════════════════════════════
+             BOTTOM-RIGHT — FIRESTORE
+        ══════════════════════════════════════ -->
+        <rect x="958" y="618" width="280" height="90" rx="10" fill="url(#idgc)" stroke="#00d4ff" stroke-width="2" filter="url(#fs-glow)"/>
+        <text x="1098" y="643" text-anchor="middle" fill="#00d4ff" font-family="DM Mono" font-size="10" font-weight="700">FIRESTORE</text>
+        <text x="1098" y="658" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Real-time deterministic feed</text>
+        <text x="1098" y="671" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Master_ID → aliases[ ]</text>
+        <text x="1098" y="684" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="8">Sub-10ms profile lookup</text>
+        <text x="1098" y="697" text-anchor="middle" fill="#10b981" font-family="DM Mono" font-size="7.5">← feeds GCP Identity Graph</text>
+
+        <!-- Firestore ↔ Golden Record -->
+        <line x1="958" y1="660" x2="662" y2="420" stroke="#00d4ff" stroke-width="1.8" stroke-dasharray="6,4" opacity=".7" marker-end="url(#aid-c)"/>
+
+        <!-- ══════════════════════════════════════
+             CONNECTING LINES — LEFT NODES → GOLDEN RECORD
+        ══════════════════════════════════════ -->
+        <!-- Email -->
+        <line x1="308" y1="100" x2="522" y2="330" stroke="#10b981" stroke-width="1.4" stroke-dasharray="5,4" opacity=".65" marker-end="url(#aid-g)"/>
+        <!-- Phone -->
+        <line x1="308" y1="195" x2="522" y2="355" stroke="#10b981" stroke-width="1.4" stroke-dasharray="5,4" opacity=".65" marker-end="url(#aid-g)"/>
+        <!-- Loyalty -->
+        <line x1="308" y1="290" x2="522" y2="375" stroke="#10b981" stroke-width="1.4" stroke-dasharray="5,4" opacity=".65" marker-end="url(#aid-g)"/>
+        <!-- CRM -->
+        <line x1="308" y1="390" x2="522" y2="385" stroke="#10b981" stroke-width="1.4" stroke-dasharray="5,4" opacity=".65" marker-end="url(#aid-g)"/>
+        <!-- GAID -->
+        <line x1="308" y1="492" x2="522" y2="400" stroke="#00d4ff" stroke-width="1.4" stroke-dasharray="5,4" opacity=".6" marker-end="url(#aid-c)"/>
+        <!-- IDFA -->
+        <line x1="308" y1="582" x2="522" y2="415" stroke="#00d4ff" stroke-width="1.4" stroke-dasharray="5,4" opacity=".6" marker-end="url(#aid-c)"/>
+        <!-- IDFV -->
+        <line x1="308" y1="672" x2="522" y2="428" stroke="#00d4ff" stroke-width="1.4" stroke-dasharray="5,4" opacity=".55" marker-end="url(#aid-c)"/>
+        <!-- Fingerprint -->
+        <line x1="430" y1="85" x2="527" y2="320" stroke="#f43f5e" stroke-width="1.2" stroke-dasharray="5,4" opacity=".5" marker-end="url(#aid-r)"/>
+        <!-- Cookie -->
+        <line x1="720" y1="85" x2="628" y2="313" stroke="#f43f5e" stroke-width="1.2" stroke-dasharray="5,4" opacity=".5" marker-end="url(#aid-r)"/>
+
+        <!-- ══════════════════════════════════════
+             ANIMATED TRAVERSAL DOTS
+        ══════════════════════════════════════ -->
+        <circle r="4" fill="#10b981" opacity=".9">
+          <animateMotion dur="2.8s" repeatCount="indefinite" path="M308,100 Q400,210 522,330"/>
+        </circle>
+        <circle r="4" fill="#10b981" opacity=".9">
+          <animateMotion dur="3.2s" repeatCount="indefinite" begin="0.7s" path="M308,290 Q400,330 522,375"/>
+        </circle>
+        <circle r="4" fill="#00d4ff" opacity=".9">
+          <animateMotion dur="2.5s" repeatCount="indefinite" begin="1.2s" path="M308,492 Q400,445 522,400"/>
+        </circle>
+        <circle r="4" fill="#00d4ff" opacity=".9">
+          <animateMotion dur="3s" repeatCount="indefinite" begin="0.4s" path="M308,582 Q400,490 522,415"/>
+        </circle>
+        <circle r="4" fill="#f59e0b" opacity=".8">
+          <animateMotion dur="2.2s" repeatCount="indefinite" begin="1.6s" path="M958,225 Q810,290 662,360"/>
+        </circle>
+        <circle r="4" fill="#8b5cf6" opacity=".8">
+          <animateMotion dur="2.6s" repeatCount="indefinite" begin="0.9s" path="M958,480 Q810,440 662,400"/>
+        </circle>
+        <circle r="4" fill="#00d4ff" opacity=".85">
+          <animateMotion dur="3.5s" repeatCount="indefinite" begin="0.3s" path="M958,660 Q810,540 662,420"/>
+        </circle>
+        <circle r="3.5" fill="#f43f5e" opacity=".75">
+          <animateMotion dur="3.8s" repeatCount="indefinite" begin="2s" path="M430,85 Q480,200 527,320"/>
+        </circle>
       </svg>
     </div>
   </div>
@@ -2501,6 +2768,147 @@ LIMITS = {
       <tbody id="connector-status-body"></tbody>
     </table>
   </div>
+
+  <!-- ══ AUDIENCE HEALTH INTELLIGENCE ══ -->
+  <div class="divider"></div>
+  <div class="sec-header" style="margin-top:0;margin-bottom:1.2rem">
+    <span class="sec-tag" style="color:var(--violet)">§ AUDIENCE INTELLIGENCE — Live via Platform APIs</span>
+    <h2 class="sec-title" style="font-size:1.2rem">Audience Match Rate & <span style="color:var(--violet)">Active Use Monitor</span></h2>
+    <p class="sec-desc" style="font-size:.76rem">Real-time audience health across Google Ads, Meta, Amazon DSP, and SA360 — match rates, active usage, staleness flags, and ROI signal pulled programmatically from each platform's API. Data refreshes every 4 hours. Min 1,000 matched users required for platform disclosure (privacy threshold).</p>
+  </div>
+
+  <!-- Feasibility research callout -->
+  <div class="alert alert-info" style="margin-bottom:1.5rem">
+    ℹ️ <strong>Technically feasible:</strong> Google Ads API exposes <code>user_list.size_for_display/search</code> + match rate per <code>offline_user_data_job</code>. Meta Marketing API returns <code>approximate_count</code> on every Custom Audience. Amazon DSP API returns audience size with privacy-threshold approximation. SA360 inherits from Google Ads user_list + surfaces bid modifier performance per audience. All four APIs require OAuth service account tokens with <code>ads_management</code> / <code>userlist.read</code> scopes stored in Secret Manager. <strong>Note:</strong> Google Ads API Customer Match upload capability migrates to Data Manager API — April 2026 deadline for active tokens.
+  </div>
+
+  <!-- Platform filter tabs -->
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.2rem" id="aud-platform-tabs">
+    <button class="aud-tab active" onclick="audFilter('all',this)">All Platforms</button>
+    <button class="aud-tab" onclick="audFilter('gads',this)">🔵 Google Ads</button>
+    <button class="aud-tab" onclick="audFilter('meta',this)">🔷 Meta</button>
+    <button class="aud-tab" onclick="audFilter('amazon',this)">🟠 Amazon DSP</button>
+    <button class="aud-tab" onclick="audFilter('sa360',this)">🔴 SA360</button>
+  </div>
+
+  <!-- Audience summary metrics -->
+  <div class="dash-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:1.2rem" id="aud-summary-row">
+    <div class="dash-kpi info"><div class="kpi-label">Total Audiences Active</div><div class="kpi-val" id="as-total">24</div><div class="kpi-delta up">across 4 platforms</div></div>
+    <div class="dash-kpi ok"><div class="kpi-label">Avg Match Rate</div><div class="kpi-val" id="as-match">61.4%</div><div class="kpi-delta up">↑ +2.1% vs last week</div></div>
+    <div class="dash-kpi warn"><div class="kpi-label">Stale Audiences</div><div class="kpi-val" id="as-stale">3</div><div class="kpi-delta down">↑ not refreshed &gt;7d</div></div>
+    <div class="dash-kpi ok"><div class="kpi-label">Actively Delivering</div><div class="kpi-val" id="as-delivering">19</div><div class="kpi-delta up">impressions this week</div></div>
+    <div class="dash-kpi info"><div class="kpi-label">Total Matched Users</div><div class="kpi-val" id="as-users">4.2M</div><div class="kpi-delta flat">across all platforms</div></div>
+  </div>
+
+  <!-- Main audience table -->
+  <div class="card" style="padding:0;overflow:hidden">
+    <div style="padding:1rem 1.2rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:1rem">
+      <div class="card-title" style="margin:0">📊 Audience Match Rate & Activity Detail</div>
+      <div style="margin-left:auto;display:flex;gap:.5rem;align-items:center">
+        <span style="font-size:.65rem;color:var(--muted)">Auto-refresh every 4hrs</span>
+        <div class="live-dot" style="width:5px;height:5px"></div>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="data-table" id="aud-main-table">
+        <thead>
+          <tr>
+            <th>Platform</th>
+            <th>Audience Name</th>
+            <th>CDP Segment</th>
+            <th>Uploaded</th>
+            <th>Matched</th>
+            <th>Match Rate</th>
+            <th>Search Size</th>
+            <th>Display Size</th>
+            <th>Last Refreshed</th>
+            <th>Status</th>
+            <th>Delivering?</th>
+            <th>ROI Signal</th>
+          </tr>
+        </thead>
+        <tbody id="aud-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Match rate bar chart (canvas) -->
+  <div class="grid-2" style="margin-top:1.2rem">
+    <div class="trend-canvas-wrap">
+      <div class="trend-header">
+        <span class="trend-title">Match Rate by Platform — 30-day Trend</span>
+        <div class="trend-legend">
+          <div class="trend-legend-item"><div class="trend-legend-dot" style="background:#00d4ff"></div>Google Ads</div>
+          <div class="trend-legend-item"><div class="trend-legend-dot" style="background:#3b82f6"></div>Meta</div>
+          <div class="trend-legend-item"><div class="trend-legend-dot" style="background:#f97316"></div>Amazon</div>
+          <div class="trend-legend-item"><div class="trend-legend-dot" style="background:#f43f5e"></div>SA360</div>
+        </div>
+      </div>
+      <canvas id="aud-trend-chart" height="150"></canvas>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🔬 API Feasibility Matrix</div>
+      <table class="data-table" style="font-size:.7rem">
+        <thead><tr><th>Platform</th><th>Match Rate API</th><th>List Size API</th><th>Active Use API</th><th>Staleness Flag</th><th>Constraint</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>🔵 Google Ads</td>
+            <td><span class="pill pill-green">✓ offline_user_data_job</span></td>
+            <td><span class="pill pill-green">✓ user_list resource</span></td>
+            <td><span class="pill pill-green">✓ ad_group_audience_view</span></td>
+            <td><span class="pill pill-green">✓ REFRESH recommendation</span></td>
+            <td style="color:var(--amber);font-size:.67rem">Data Manager API migration Apr 2026</td>
+          </tr>
+          <tr>
+            <td>🔷 Meta</td>
+            <td><span class="pill pill-green">✓ approximate_count</span></td>
+            <td><span class="pill pill-green">✓ Custom Audience API</span></td>
+            <td><span class="pill pill-green">✓ Insights API</span></td>
+            <td><span class="pill pill-amber">Partial — no native flag</span></td>
+            <td style="color:var(--amber);font-size:.67rem">Min 1,000 users for disclosure</td>
+          </tr>
+          <tr>
+            <td>🟠 Amazon DSP</td>
+            <td><span class="pill pill-green">✓ DSP Audiences API</span></td>
+            <td><span class="pill pill-green">✓ Approximated count</span></td>
+            <td><span class="pill pill-green">✓ AMC + DSP Reporting</span></td>
+            <td><span class="pill pill-amber">Partial — manual check</span></td>
+            <td style="color:var(--amber);font-size:.67rem">Privacy threshold; batch-only match</td>
+          </tr>
+          <tr>
+            <td>🔴 SA360</td>
+            <td><span class="pill pill-amber">Via Google Ads API</span></td>
+            <td><span class="pill pill-green">✓ Inherits from GAds</span></td>
+            <td><span class="pill pill-green">✓ Bid modifier + Floodlight</span></td>
+            <td><span class="pill pill-green">✓ Via GAds recommendation</span></td>
+            <td style="color:var(--muted2);font-size:.67rem">No raw match rate in SA360 API directly</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
+        <div style="font-size:.7rem;color:var(--text);font-weight:600;margin-bottom:.5rem">What "Actively Used" means per platform</div>
+        <div style="font-size:.69rem;color:var(--muted2);line-height:1.8">
+          <strong style="color:var(--cyan)">Google Ads:</strong> Impressions &gt; 0 in last 7d from <code>ad_group_audience_view</code><br>
+          <strong style="color:#3b82f6)">Meta:</strong> Reach &gt; 0 in Insights API; audience <code>delivery_status = active</code><br>
+          <strong style="color:#f97316)">Amazon DSP:</strong> Line item targeting this audience with &gt;0 impressions (DSP Reporting API)<br>
+          <strong style="color:var(--rose)">SA360:</strong> Bid modifier applied + Floodlight conversion credit in last 14d
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Staleness & Refresh Recommendations -->
+  <div class="card" style="margin-top:1.2rem;border-color:rgba(245,158,11,.25)">
+    <div class="card-title" style="color:var(--amber)">⚠️ Staleness & Refresh Recommendations</div>
+    <table class="data-table" id="aud-stale-table">
+      <thead><tr><th>Platform</th><th>Audience</th><th>Last Refresh</th><th>Days Stale</th><th>Impact</th><th>Recommended Action</th></tr></thead>
+      <tbody id="aud-stale-body"></tbody>
+    </table>
+    <div class="alert alert-warn" style="margin-top:1rem">⚠️ <strong>Staleness effect:</strong> Google Ads match rate degrades ~3–5% per week of inactivity as matched users change email/phone. Meta audiences expire after 30 days without refresh — they show 0 reach but no error. Amazon DSP audiences don't auto-expire but match quality degrades with churn. Always refresh high-value suppression lists within 24hrs — stale suppressions waste paid media budget on converted users.</div>
+  </div>
+  <!-- ══ END AUDIENCE HEALTH INTELLIGENCE ══ -->
 </section>
 
 <footer>
@@ -2943,11 +3351,387 @@ function initDashboard() {
   // Live tick
   dashInterval = setInterval(updateDashboard, 1200);
   errInterval  = setInterval(addErrorLog, 3500);
+  initAudienceHealth();
 }
 
 // Resize handler for trend canvases
 window.addEventListener('resize', () => {
   if (dashInited) updateDashboard();
+});
+
+// ═══════════════ AUDIENCE HEALTH INTELLIGENCE ═══════════════
+const AUD_DATA = [
+  // Google Ads
+  {platform:'gads', icon:'🔵', name:'High-Value Customers',  segment:'ltv_percentile_90plus',      uploaded:142800, matched:86100, matchPct:60.3, searchSz:'78K',  displaySz:'62K',  refreshed:'2h ago',  status:'READY',      active:true,  roi:'↑ +34% ROAS vs non-audience', staledays:0},
+  {platform:'gads', icon:'🔵', name:'Suppression — Recent Buyers', segment:'purchase_last_14d',    uploaded:38200,  matched:24700, matchPct:64.7, searchSz:'22K',  displaySz:'18K',  refreshed:'3h ago',  status:'READY',      active:true,  roi:'Saves ~£12K/wk wasted spend',  staledays:0},
+  {platform:'gads', icon:'🔵', name:'Lapsed Buyers 90-180d',       segment:'lapsed_90_180d',        uploaded:71400,  matched:39200, matchPct:54.9, searchSz:'35K',  displaySz:'28K',  refreshed:'1d ago',  status:'READY',      active:true,  roi:'↑ +18% re-engagement CTR',    staledays:1},
+  {platform:'gads', icon:'🔵', name:'VBB Platinum Tier',            segment:'vbb_platinum',          uploaded:12400,  matched:8900,  matchPct:71.8, searchSz:'8.1K', displaySz:'6.4K', refreshed:'4h ago',  status:'READY',      active:true,  roi:'Conv value +£4.20 avg',        staledays:0},
+  {platform:'gads', icon:'🔵', name:'Win-Back — Offline Only',      segment:'offline_no_online_90d', uploaded:29800,  matched:13100, matchPct:43.9, searchSz:'11K',  displaySz:'9.2K', refreshed:'9d ago',  status:'STALE',      active:false, roi:'Not delivering — stale list',  staledays:9},
+  // Meta
+  {platform:'meta', icon:'🔷', name:'Cart Abandoners 48h',          segment:'abandon_cart_48h',      uploaded:54200,  matched:38900, matchPct:71.8, searchSz:'—',    displaySz:'38.9K',refreshed:'1h ago',  status:'ACTIVE',     active:true,  roi:'↑ 16% recovery rate',         staledays:0},
+  {platform:'meta', icon:'🔷', name:'Lookalike — LTV Top 10%',      segment:'ltv_top_10pct_seed',    uploaded:18600,  matched:14200, matchPct:76.3, searchSz:'—',    displaySz:'14.2K',refreshed:'6h ago',  status:'ACTIVE',     active:true,  roi:'CPM -22% vs cold audience',    staledays:0},
+  {platform:'meta', icon:'🔷', name:'Suppression — All Buyers',     segment:'any_purchase_ever',     uploaded:184000, matched:127800,matchPct:69.5, searchSz:'—',    displaySz:'127K', refreshed:'2h ago',  status:'ACTIVE',     active:true,  roi:'Budget protection active',     staledays:0},
+  {platform:'meta', icon:'🔷', name:'Email Openers 30d',             segment:'email_open_30d',        uploaded:44100,  matched:29700, matchPct:67.3, searchSz:'—',    displaySz:'29.7K',refreshed:'12d ago', status:'STALE',      active:false, roi:'Audience expired — 0 reach',   staledays:12},
+  {platform:'meta', icon:'🔷', name:'Offline Converters',            segment:'purchase_offline_30d',  uploaded:9800,   matched:6200,  matchPct:63.3, searchSz:'—',    displaySz:'6.2K', refreshed:'3h ago',  status:'PROCESSING', active:false, roi:'Processing — 48hr window',     staledays:0},
+  // Amazon DSP
+  {platform:'amazon',icon:'🟠',name:'High Purchase Intent',         segment:'purchase_intent_high',  uploaded:98000,  matched:61200, matchPct:62.4, searchSz:'—',    displaySz:'~61K', refreshed:'24h ago', status:'READY',      active:true,  roi:'ROAS 3.8x vs benchmark 2.1x', staledays:1},
+  {platform:'amazon',icon:'🟠',name:'AMC Overlap — Retarget',       segment:'amc_view_no_convert',   uploaded:43700,  matched:27400, matchPct:62.7, searchSz:'—',    displaySz:'~27K', refreshed:'2d ago',  status:'READY',      active:true,  roi:'View-to-convert +28%',         staledays:2},
+  {platform:'amazon',icon:'🟠',name:'Suppression — Recent Orders',  segment:'amazon_purchase_7d',    uploaded:21300,  matched:13800, matchPct:64.8, searchSz:'—',    displaySz:'~13K', refreshed:'23h ago', status:'READY',      active:true,  roi:'Wasted DSP spend protected',   staledays:1},
+  {platform:'amazon',icon:'🟠',name:'Lifestyle Lookalike',           segment:'lifestyle_seed_bq',     uploaded:8200,   matched:4100,  matchPct:50.0, searchSz:'—',    displaySz:'~4.1K',refreshed:'8d ago',  status:'STALE',      active:false, roi:'Below min size threshold',     staledays:8},
+  // SA360
+  {platform:'sa360', icon:'🔴', name:'RLSA — High Value',            segment:'ltv_percentile_80plus', uploaded:92400,  matched:56300, matchPct:61.0, searchSz:'51K',  displaySz:'—',    refreshed:'4h ago',  status:'READY',      active:true,  roi:'+40% bid adj active',          staledays:0},
+  {platform:'sa360', icon:'🔴', name:'RLSA — Lapsed Re-engage',      segment:'lapsed_90_180d',        uploaded:71400,  matched:39100, matchPct:54.8, searchSz:'35K',  displaySz:'—',    refreshed:'5h ago',  status:'READY',      active:true,  roi:'+25% bid adj active',          staledays:0},
+  {platform:'sa360', icon:'🔴', name:'Exclusion — Recent Buyers',    segment:'purchase_last_14d',     uploaded:38200,  matched:24600, matchPct:64.4, searchSz:'22K',  displaySz:'—',    refreshed:'3h ago',  status:'READY',      active:true,  roi:'-20% bid adj protecting waste', staledays:0},
+  {platform:'sa360', icon:'🔴', name:'Smart Bidding Signal — VBB',   segment:'vbb_all_tiers',         uploaded:48900,  matched:31200, matchPct:63.8, searchSz:'28K',  displaySz:'—',    refreshed:'6h ago',  status:'READY',      active:true,  roi:'Conversion value +£3.10/click', staledays:0},
+];
+
+let audCurrentFilter = 'all';
+let audTrendHistory = {
+  gads:   Array.from({length:30},(_,i)=>58+Math.random()*6-(30-i)*0.05),
+  meta:   Array.from({length:30},(_,i)=>66+Math.random()*7-(30-i)*0.04),
+  amazon: Array.from({length:30},(_,i)=>55+Math.random()*8-(30-i)*0.03),
+  sa360:  Array.from({length:30},(_,i)=>60+Math.random()*5-(30-i)*0.04),
+};
+
+function renderAudTable() {
+  const rows = audCurrentFilter === 'all' ? AUD_DATA : AUD_DATA.filter(a => a.platform === audCurrentFilter);
+  const tbody = document.getElementById('aud-table-body');
+  if (!tbody) return;
+
+  tbody.innerHTML = rows.map(a => {
+    const matchCol = a.matchPct >= 65 ? 'var(--emerald)' : a.matchPct >= 50 ? 'var(--amber)' : 'var(--rose)';
+    const matchBar = `<div style="display:flex;align-items:center;gap:.5rem">
+      <div style="width:60px;height:6px;background:var(--border);border-radius:3px;overflow:hidden;flex-shrink:0">
+        <div style="height:100%;width:${a.matchPct}%;background:${matchCol};border-radius:3px;transition:width .5s"></div>
+      </div>
+      <span style="color:${matchCol};font-weight:600">${a.matchPct.toFixed(1)}%</span>
+    </div>`;
+
+    const statusPill = a.status === 'READY' || a.status === 'ACTIVE'
+      ? `<span class="pill pill-green">${a.status}</span>`
+      : a.status === 'STALE'
+      ? `<span class="pill pill-rose">STALE ${a.staledays}d</span>`
+      : `<span class="pill pill-amber">${a.status}</span>`;
+
+    const delivPill = a.active
+      ? `<span class="pill pill-green">● Delivering</span>`
+      : `<span class="pill pill-rose">● Inactive</span>`;
+
+    const roiCol = a.roi.includes('↑') || a.roi.includes('+') ? 'var(--emerald)'
+      : a.roi.includes('Saves') || a.roi.includes('protection') ? 'var(--cyan)'
+      : a.roi.includes('stale') || a.roi.includes('expired') || a.roi.includes('threshold') ? 'var(--rose)'
+      : 'var(--muted2)';
+
+    return `<tr>
+      <td>${a.icon} <strong style="font-size:.75rem">${a.platform === 'gads' ? 'Google Ads' : a.platform === 'meta' ? 'Meta' : a.platform === 'amazon' ? 'Amazon DSP' : 'SA360'}</strong></td>
+      <td style="max-width:160px;white-space:normal;font-size:.72rem;color:var(--text)">${a.name}</td>
+      <td><code style="font-size:.64rem;color:var(--violet)">${a.segment}</code></td>
+      <td style="color:var(--muted2)">${a.uploaded.toLocaleString()}</td>
+      <td style="color:var(--text)">${a.matched.toLocaleString()}</td>
+      <td>${matchBar}</td>
+      <td style="color:var(--muted2)">${a.searchSz}</td>
+      <td style="color:var(--muted2)">${a.displaySz}</td>
+      <td style="color:${a.staledays > 7 ? 'var(--rose)' : a.staledays > 3 ? 'var(--amber)' : 'var(--muted2)'};font-size:.68rem">${a.refreshed}</td>
+      <td>${statusPill}</td>
+      <td>${delivPill}</td>
+      <td style="font-size:.67rem;color:${roiCol};max-width:140px;white-space:normal">${a.roi}</td>
+    </tr>`;
+  }).join('');
+
+  // Update summary
+  const visible = AUD_DATA.filter(a => audCurrentFilter === 'all' || a.platform === audCurrentFilter);
+  const avgMatch = (visible.reduce((s,a) => s + a.matchPct, 0) / visible.length).toFixed(1);
+  const stale = visible.filter(a => a.staledays > 7).length;
+  const active = visible.filter(a => a.active).length;
+  const totalUsers = visible.reduce((s,a) => s + a.matched, 0);
+
+  const setV = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  setV('as-total', visible.length);
+  setV('as-match', avgMatch + '%');
+  setV('as-stale', stale);
+  setV('as-delivering', active);
+  setV('as-users', totalUsers > 1000000 ? (totalUsers/1000000).toFixed(1) + 'M' : (totalUsers/1000).toFixed(0) + 'K');
+
+  renderStaleTable(visible);
+  drawAudTrend();
+}
+
+function renderStaleTable(rows) {
+  const stale = rows.filter(a => a.staledays >= 2).sort((a,b) => b.staledays - a.staledays);
+  const tbody = document.getElementById('aud-stale-body');
+  if (!tbody) return;
+
+  const impacts = {
+    gads: 'Match rate degrading ~3-5%/wk; REFRESH_CUSTOMER_MATCH_LIST recommendation active',
+    meta: 'Audience may show 0 reach after 30d; delivery stops silently',
+    amazon: 'Match quality degrades with customer churn; no auto-expiry but ROI drops',
+    sa360: 'Bid modifiers applied to stale list; wasted adjustments on wrong users',
+  };
+
+  const actions = {
+    gads: 'Re-export BQ audience → trigger Cloud Run connector → upload via Data Manager API',
+    meta: 'Re-export segment → POST /customaudiences/{id}/users → wait 24-72hr for propagation',
+    amazon: 'Re-upload S3 file → trigger DSP Audience match → verify count via DSP Audiences API',
+    sa360: 'Refresh via Google Ads API (inherited list) → verify bid modifiers still applied',
+  };
+
+  if (stale.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--emerald);padding:1rem">✅ No stale audiences detected — all lists refreshed within 7 days</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = stale.map(a => {
+    const platName = a.platform === 'gads' ? 'Google Ads' : a.platform === 'meta' ? 'Meta' : a.platform === 'amazon' ? 'Amazon DSP' : 'SA360';
+    const col = a.staledays > 10 ? 'var(--rose)' : 'var(--amber)';
+    return `<tr>
+      <td>${a.icon} ${platName}</td>
+      <td style="color:var(--text)">${a.name}</td>
+      <td style="color:${col}">${a.refreshed}</td>
+      <td style="color:${col};font-weight:600">${a.staledays}d</td>
+      <td style="font-size:.7rem;color:var(--muted2);max-width:200px;white-space:normal">${impacts[a.platform]}</td>
+      <td style="font-size:.68rem;color:var(--cyan);max-width:220px;white-space:normal">${actions[a.platform]}</td>
+    </tr>`;
+  }).join('');
+}
+
+function drawAudTrend() {
+  const canvas = document.getElementById('aud-trend-chart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth || 500;
+  const H = 150;
+  canvas.width = W; canvas.height = H;
+  ctx.clearRect(0, 0, W, H);
+
+  const series = [
+    {data: audTrendHistory.gads,   color:'#00d4ff'},
+    {data: audTrendHistory.meta,   color:'#3b82f6'},
+    {data: audTrendHistory.amazon, color:'#f97316'},
+    {data: audTrendHistory.sa360,  color:'#f43f5e'},
+  ];
+
+  // Grid
+  ctx.strokeStyle = 'rgba(26,45,74,0.5)'; ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = 10 + (H - 30) * i / 4;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    ctx.fillStyle = '#374151'; ctx.font = '8px DM Mono';
+    ctx.fillText(`${Math.round(80 - i*10)}%`, 2, y - 2);
+  }
+
+  series.forEach(s => {
+    const pts = s.data;
+    ctx.beginPath();
+    pts.forEach((v, i) => {
+      const x = i * (W / (pts.length - 1));
+      const y = H - 20 - ((v - 40) / 50) * (H - 35);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = s.color; ctx.lineWidth = 1.8; ctx.stroke();
+
+    // Live dot
+    const lx = (pts.length - 1) * (W / (pts.length - 1));
+    const lv = pts[pts.length - 1];
+    const ly = H - 20 - ((lv - 40) / 50) * (H - 35);
+    ctx.beginPath(); ctx.arc(lx, ly, 4, 0, Math.PI * 2);
+    ctx.fillStyle = s.color; ctx.fill();
+  });
+}
+
+function updateAudTrends() {
+  // Simulate small fluctuations in match rates
+  ['gads','meta','amazon','sa360'].forEach(p => {
+    const arr = audTrendHistory[p];
+    const last = arr[arr.length - 1];
+    const next = Math.max(40, Math.min(85, last + (Math.random() - 0.5) * 0.8));
+    arr.shift(); arr.push(next);
+    // Update matching audience matchPct slightly
+    AUD_DATA.filter(a => a.platform === p).forEach(a => {
+      a.matchPct = Math.max(35, Math.min(85, a.matchPct + (Math.random() - 0.5) * 0.3));
+    });
+  });
+  drawAudTrend();
+  if (audCurrentFilter) renderAudTable();
+}
+
+function audFilter(platform, btn) {
+  audCurrentFilter = platform;
+  document.querySelectorAll('.aud-tab').forEach(t => t.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderAudTable();
+}
+
+// Audience health init — called by initDashboard below
+function initAudienceHealth() {
+  renderAudTable();
+  setInterval(updateAudTrends, 4000);
+}
+
+const RF_STEPS = [
+  {
+    title:'Step 1 — Existing Mobile Session',
+    desc:'Marcus previously signed in on his <strong style="color:var(--amber)">tablet</strong>. Firestore holds document <code style="color:var(--cyan)">Profile_M1</code> linking device <code style="color:var(--amber)">Tablet_iPad7</code> to his account ID <code style="color:var(--emerald)">marcus_id_447</code>. The profile is partially built — one device, one auth signal.',
+    sgtm:'',flow:'',
+    phone:{did:'Tablet_iPad7',uid:'marcus_id_447',mid:'Profile_M1',state:'Identified ✓',stateCol:'var(--emerald)',border:'var(--amber)'},
+    laptop:{did:'Desktop_Win11',uid:'null',mid:'null',state:'Unknown',stateCol:'var(--muted2)',border:'var(--border2)'},
+    laptop_event:'',phone_event:'Last session: 3 days ago',
+    showLaptopAlias:false,showCookie:false,
+    docStatus:'EXISTS',docStyle:'color:var(--emerald);border-color:var(--emerald)',
+    detail:{color:'var(--amber)',icon:'📱',title:'Profile partially assembled in Firestore',body:'One device, one auth signal. The CDP golden record exists for the tablet. The work desktop has never been seen — it will be treated as a stranger on first visit.'},
+    code:`<span class="c">// Firestore: profiles/Profile_M1  (current state before desktop visit)</span>\n{\n  <span class="n">"master_id"</span>: <span class="s">"Profile_M1"</span>,\n  <span class="n">"aliases"</span>: [\n    <span class="s">"Tablet_iPad7"</span>,   <span class="c">// mobile device ID</span>\n    <span class="s">"marcus_id_447"</span>  <span class="c">// authenticated account ID</span>\n  ],\n  <span class="n">"match_confidence"</span>: <span class="s">"HIGH"</span>\n}`
+  },
+  {
+    title:'Step 2 — New Device Arrives (Anonymous)',
+    desc:'Marcus opens his <strong style="color:var(--rose)">work desktop</strong> and visits the site. No cookie, no session, no user ID. sGTM receives a <code>page_view</code> hit and checks for a <code>master_id</code> cookie — finds nothing. The CDP logs this as a fully anonymous session.',
+    sgtm:'Receives anonymous page_view — no master_id cookie found',
+    flow:'📡  Desktop_Win11 → sGTM: { event: page_view, user_id: null }',
+    phone:{did:'Tablet_iPad7',uid:'marcus_id_447',mid:'Profile_M1',state:'Identified ✓',stateCol:'var(--emerald)',border:'var(--amber)'},
+    laptop:{did:'Desktop_Win11',uid:'null',mid:'null',state:'Anonymous',stateCol:'var(--muted2)',border:'var(--rose)'},
+    laptop_event:'⚡ First visit — no cookie set',phone_event:'',
+    showLaptopAlias:false,showCookie:false,
+    docStatus:'EXISTS',docStyle:'color:var(--emerald);border-color:var(--emerald)',
+    detail:{color:'var(--rose)',icon:'💻',title:'Desktop is a complete stranger to the CDP',body:'Without a user_id in the payload, sGTM cannot query Firestore. The desktop is temporarily assigned an anonymous session token — not persisted to any profile.'},
+    code:`<span class="c">// Event received by sGTM from the work desktop</span>\n{\n  <span class="n">"event"</span>:      <span class="s">"page_view"</span>,\n  <span class="n">"device_id"</span>:  <span class="s">"Desktop_Win11"</span>,\n  <span class="n">"user_id"</span>:    <span class="k">null</span>,        <span class="c">// not logged in</span>\n  <span class="n">"master_id"</span>:  <span class="k">null</span>         <span class="c">// no cookie present</span>\n}\n<span class="c">// Decision: no uid → skip Firestore query → anonymous session</span>`
+  },
+  {
+    title:'Step 3 — Account Login (The Catalyst)',
+    desc:'Marcus enters his credentials on the desktop. The site fires an <code>account_login</code> event carrying <strong>two signals simultaneously</strong>: current device <code style="color:var(--rose)">Desktop_Win11</code> and his account ID <code style="color:var(--emerald)">marcus_id_447</code>. This dual-signal payload is the stitch trigger.',
+    sgtm:'🔑  Login event received — dual identity payload detected',
+    flow:'📡  { device: Desktop_Win11, account_id: marcus_id_447 } → sGTM',
+    phone:{did:'Tablet_iPad7',uid:'marcus_id_447',mid:'Profile_M1',state:'Identified ✓',stateCol:'var(--emerald)',border:'var(--amber)'},
+    laptop:{did:'Desktop_Win11',uid:'marcus_id_447',mid:'null',state:'Authenticating…',stateCol:'var(--amber)',border:'var(--amber)'},
+    laptop_event:'🔐 marcus@brand.com — credentials submitted',phone_event:'',
+    showLaptopAlias:false,showCookie:false,
+    docStatus:'EXISTS',docStyle:'color:var(--emerald);border-color:var(--emerald)',
+    detail:{color:'var(--amber)',icon:'🔑',title:'The dual-signal payload is the prerequisite for stitching',body:'Having <code>device_id</code> AND <code>account_id</code> in the same event is what enables identity resolution. Without the account_id, sGTM cannot query Firestore. Without the device_id, it cannot update the profile.'},
+    code:`<span class="c">// account_login event sent by the site → sGTM</span>\n{\n  <span class="n">"event"</span>:      <span class="s">"account_login"</span>,\n  <span class="n">"device_id"</span>:  <span class="s">"Desktop_Win11"</span>,     <span class="c">// current device ← needed</span>\n  <span class="n">"account_id"</span>: <span class="s">"marcus_id_447"</span>,   <span class="c">// auth signal ← needed</span>\n  <span class="n">"master_id"</span>:  <span class="k">null</span>                <span class="c">// still no cookie</span>\n}`
+  },
+  {
+    title:'Step 4 — Firestore Lookup (Query & Match)',
+    desc:'sGTM queries Firestore using an <strong>array-contains</strong> index: <em>"Which profile has <code style="color:var(--emerald)">marcus_id_447</code> in its aliases array?"</em> The device ID is set aside — the deterministic auth signal takes priority. Firestore responds in under 10ms: <code style="color:var(--cyan)">Profile_M1</code>.',
+    sgtm:'🔍  Querying Firestore: aliases array-contains "marcus_id_447"',
+    flow:'🔍  sGTM → Firestore: where(aliases, array-contains, marcus_id_447)',
+    phone:{did:'Tablet_iPad7',uid:'marcus_id_447',mid:'Profile_M1',state:'Identified ✓',stateCol:'var(--emerald)',border:'var(--amber)'},
+    laptop:{did:'Desktop_Win11',uid:'marcus_id_447',mid:'null',state:'Resolving…',stateCol:'var(--cyan)',border:'var(--cyan)'},
+    laptop_event:'⏳ Awaiting Firestore response…',phone_event:'',
+    showLaptopAlias:false,showCookie:false,
+    docStatus:'MATCH FOUND ✓',docStyle:'color:var(--cyan);border-color:var(--cyan)',
+    detail:{color:'var(--cyan)',icon:'🔍',title:'Indexed array-contains lookup — sub-10ms, not a full scan',body:'Firestore maintains an inverted index on the <code>aliases</code> array. Direct key lookup. The desktop device ID is deliberately ignored at this stage — the auth signal is the deterministic anchor.'},
+    code:`<span class="c">// sGTM Cloud Function — Firestore lookup by auth signal</span>\n<span class="k">const</span> snap = <span class="k">await</span> db\n  .collection(<span class="s">'profiles'</span>)\n  .where(<span class="s">'aliases'</span>, <span class="s">'array-contains'</span>, <span class="s">'marcus_id_447'</span>)\n  .limit(<span class="v">1</span>)\n  .get();\n\n<span class="c">// Result: Profile_M1 found in 8ms — HIGH confidence match</span>\n<span class="k">const</span> profileRef = snap.docs[<span class="v">0</span>].ref;\n<span class="k">const</span> profileId   = snap.docs[<span class="v">0</span>].id;  <span class="c">// "Profile_M1"</span>`
+  },
+  {
+    title:'Step 5 — Profile Update (arrayUnion Stitch)',
+    desc:'sGTM confirms <code style="color:var(--cyan)">Profile_M1</code> is the correct profile. It checks: is <code style="color:var(--rose)">Desktop_Win11</code> already in the aliases array? No. It executes an <strong>arrayUnion</strong> — a Firestore atomic write that appends the device ID without duplicating.',
+    sgtm:'✅  Match confirmed — executing arrayUnion for Desktop_Win11',
+    flow:'⚡  Firestore.update: Profile_M1.aliases ← arrayUnion("Desktop_Win11")',
+    phone:{did:'Tablet_iPad7',uid:'marcus_id_447',mid:'Profile_M1',state:'Identified ✓',stateCol:'var(--emerald)',border:'var(--amber)'},
+    laptop:{did:'Desktop_Win11',uid:'marcus_id_447',mid:'Profile_M1',state:'Stitching…',stateCol:'var(--violet)',border:'var(--violet)'},
+    laptop_event:'⚡ arrayUnion write in progress',phone_event:'',
+    showLaptopAlias:true,showCookie:false,
+    docStatus:'UPDATING…',docStyle:'color:var(--violet);border-color:var(--violet)',
+    detail:{color:'var(--violet)',icon:'🔗',title:'arrayUnion is atomic and idempotent — safe under retries',body:'If <code>Desktop_Win11</code> were already in the array, arrayUnion silently skips the write — no duplicates ever created. Safe under concurrent events and retry conditions.'},
+    code:`<span class="c">// Atomic Firestore arrayUnion — appends without duplicating</span>\n<span class="k">await</span> profileRef.update({\n  aliases: admin.firestore.FieldValue.arrayUnion(\n    <span class="s">'Desktop_Win11'</span>\n  ),\n  updated_at: admin.firestore.FieldValue.serverTimestamp()\n});\n\n<span class="c">// Resulting aliases: ["Tablet_iPad7","marcus_id_447","Desktop_Win11"]</span>`
+  },
+  {
+    title:'Step 6 — Unified Record (Three Keys, One Profile)',
+    desc:'<code style="color:var(--cyan)">Profile_M1</code> now holds three identity keys: the original <code style="color:var(--amber)">Tablet_iPad7</code>, the auth anchor <code style="color:var(--emerald)">marcus_id_447</code>, and the newly stitched <code style="color:var(--rose)">Desktop_Win11</code>. This is the golden record — cross-device, deterministic, HIGH confidence.',
+    sgtm:'✅  Profile_M1 updated — 3 aliases confirmed',
+    flow:'✅  Profile_M1: [ Tablet_iPad7 · marcus_id_447 · Desktop_Win11 ]',
+    phone:{did:'Tablet_iPad7',uid:'marcus_id_447',mid:'Profile_M1',state:'Identified ✓',stateCol:'var(--emerald)',border:'var(--emerald)'},
+    laptop:{did:'Desktop_Win11',uid:'marcus_id_447',mid:'Profile_M1',state:'Stitched ✓',stateCol:'var(--emerald)',border:'var(--emerald)'},
+    laptop_event:'✅ Desktop now part of Profile_M1',phone_event:'✅ Profile updated',
+    showLaptopAlias:true,showCookie:false,
+    docStatus:'UNIFIED ✓',docStyle:'color:var(--emerald);border-color:var(--emerald)',
+    detail:{color:'var(--emerald)',icon:'🔗',title:'Both devices now share one CDP profile',body:'Any future event from either device will resolve to <code>Profile_M1</code>. The CDP can now attribute the desktop browse session to Marcus\'s complete purchase history, LTV score, and audience memberships.'},
+    code:`<span class="c">// Final Firestore document — Profile_M1 after stitch</span>\n{\n  <span class="n">"master_id"</span>: <span class="s">"Profile_M1"</span>,\n  <span class="n">"aliases"</span>: [\n    <span class="s">"Tablet_iPad7"</span>,    <span class="c">// original mobile device</span>\n    <span class="s">"marcus_id_447"</span>,  <span class="c">// auth account anchor</span>\n    <span class="s">"Desktop_Win11"</span>   <span class="c">// ← newly stitched ✓</span>\n  ],\n  <span class="n">"match_confidence"</span>: <span class="s">"HIGH"</span>,\n  <span class="n">"updated_at"</span>: <span class="s">"2024-03-17T09:14:23Z"</span>\n}`
+  },
+  {
+    title:'Step 7 — Cookie Set & Re-Identification Complete',
+    desc:'sGTM sends a response back to the desktop browser setting the <code>master_id</code> cookie to <code style="color:var(--cyan)">Profile_M1</code>. Every future event from <code style="color:var(--rose)">Desktop_Win11</code> will carry this cookie — no Firestore lookup required. The anonymous desktop now shares the <strong>exact same profile</strong> as the tablet.',
+    sgtm:'🍪  Sending Set-Cookie: master_id=Profile_M1 to Desktop',
+    flow:'🍪  sGTM → Desktop: Set-Cookie: master_id=Profile_M1; HttpOnly; Secure',
+    phone:{did:'Tablet_iPad7',uid:'marcus_id_447',mid:'Profile_M1',state:'Identified ✓',stateCol:'var(--emerald)',border:'var(--emerald)'},
+    laptop:{did:'Desktop_Win11',uid:'marcus_id_447',mid:'Profile_M1',state:'Re-identified ✓',stateCol:'var(--emerald)',border:'var(--cyan)'},
+    laptop_event:'🍪 master_id=Profile_M1 stored in browser',
+    phone_event:'✅ Same profile — cross-device complete',
+    showLaptopAlias:true,showCookie:true,
+    docStatus:'COMPLETE ✓',docStyle:'color:var(--cyan);border-color:var(--cyan)',
+    detail:{color:'var(--cyan)',icon:'🍪',title:'Cookie persists re-identification on all future visits',body:'On subsequent desktop visits, the browser sends <code>master_id=Profile_M1</code> with every request. sGTM reads it directly — no Firestore query needed. Resolution latency drops from ~10ms to ~0ms.'},
+    code:`<span class="c">// sGTM response — sets first-party cookie on the desktop browser</span>\nresponse.setHeader(<span class="s">'Set-Cookie'</span>, [\n  <span class="s">\`master_id=Profile_M1; \`</span> +\n  <span class="s">\`Max-Age=\${365*24*3600}; \`</span> +\n  <span class="s">\`SameSite=Strict; Secure; HttpOnly\`</span>\n]);\n\n<span class="c">// Future desktop events arrive with cookie already set:</span>\n<span class="c">// { device_id:"Desktop_Win11", master_id:"Profile_M1" }</span>\n<span class="c">// → sGTM reads cookie → skips Firestore lookup → instant ✓</span>`
+  }
+];
+
+let rfCurrent=0,rfAutoTimer=null;
+
+function rfRender(){
+  const s=RF_STEPS[rfCurrent],total=RF_STEPS.length;
+  const el=(id)=>document.getElementById(id);
+  const set=(id,v)=>{const e=el(id);if(e)e.textContent=v;};
+  const setH=(id,v)=>{const e=el(id);if(e)e.innerHTML=v;};
+
+  set('rf-step-label',`Step ${rfCurrent+1} / ${total}`);
+  set('rf-title',s.title);
+  setH('rf-desc',s.desc);
+
+  // Tablet box
+  set('rf-phone-did',s.phone.did);set('rf-phone-uid',s.phone.uid);set('rf-phone-mid',s.phone.mid);
+  const pSt=el('rf-phone-state');if(pSt){pSt.textContent=s.phone.state;pSt.style.color=s.phone.stateCol;}
+  const pBox=el('rf-phone');if(pBox)pBox.style.borderColor=s.phone.border;
+  set('rf-phone-event',s.phone_event||'');
+
+  // Desktop box
+  const lUid=el('rf-laptop-uid');if(lUid){lUid.textContent=s.laptop.uid;lUid.style.color=s.laptop.uid==='null'?'var(--muted2)':'var(--emerald)';}
+  const lMid=el('rf-laptop-mid');if(lMid){lMid.textContent=s.laptop.mid;lMid.style.color=s.laptop.mid==='null'?'var(--muted2)':'var(--cyan)';}
+  set('rf-laptop-did',s.laptop.did);
+  const lSt=el('rf-laptop-state');if(lSt){lSt.textContent=s.laptop.state;lSt.style.color=s.laptop.stateCol;}
+  const lBox=el('rf-laptop');if(lBox)lBox.style.borderColor=s.laptop.border;
+  set('rf-laptop-event',s.laptop_event||'');
+
+  // sGTM
+  set('rf-sgtm-action',s.sgtm||'');
+  const ring=el('rf-sgtm-ring');if(ring)ring.style.display=s.sgtm?'block':'none';
+
+  // Flow msg
+  setH('rf-flow-msg',s.flow||'&nbsp;');
+
+  // Firestore doc
+  set('rf-doc-id',s.phone.mid);
+  const dSt=el('rf-doc-status');
+  if(dSt){dSt.textContent=s.docStatus;dSt.setAttribute('style',`font-size:.6rem;padding:.15rem .5rem;border-radius:4px;border:1px solid;${s.docStyle}`);}
+
+  // Alias rows
+  const al=el('rf-alias-laptop');
+  if(al){al.style.opacity=s.showLaptopAlias?'1':'0';al.style.height=s.showLaptopAlias?'auto':'0';al.style.overflow=s.showLaptopAlias?'visible':'hidden';}
+  const cl=el('rf-cookie-line');
+  if(cl){cl.style.opacity=s.showCookie?'1':'0';cl.style.height=s.showCookie?'auto':'0';cl.style.overflow=s.showCookie?'visible':'hidden';}
+
+  // Detail card
+  const dc=el('rf-detail-card');
+  if(dc&&s.detail)dc.innerHTML=`<div class="card" style="border-color:${s.detail.color}40"><div class="card-title" style="color:${s.detail.color}">${s.detail.icon} ${s.detail.title}</div><div class="card-body">${s.detail.body}</div></div>`;
+
+  // Code block
+  const cb=el('rf-code-block');
+  if(cb&&s.code)cb.innerHTML=`<div class="code-block" style="font-size:.69rem"><span class="code-tag">Step ${rfCurrent+1} — Implementation</span>${s.code}</div>`;
+
+  // Progress dots
+  const dots=el('rf-dots');
+  if(dots)dots.innerHTML=RF_STEPS.map((_,i)=>`<div class="rf-step-dot ${i<rfCurrent?'done':i===rfCurrent?'active':''}" onclick="rfGoTo(${i})"></div>`).join('');
+
+  const bp=el('rf-btn-prev');if(bp)bp.style.opacity=rfCurrent===0?'.4':'1';
+  const bn=el('rf-btn-next');if(bn)bn.textContent=rfCurrent===total-1?'↺ Restart':'Next ▶';
+}
+
+function rfNext(){rfCurrent<RF_STEPS.length-1?rfCurrent++:rfCurrent=0;rfRender();}
+function rfPrev(){if(rfCurrent>0){rfCurrent--;rfRender();}}
+function rfGoTo(i){rfCurrent=i;rfRender();}
+function rfReset(){rfCurrent=0;if(rfAutoTimer){clearInterval(rfAutoTimer);rfAutoTimer=null;const b=document.getElementById('rf-btn-auto');if(b)b.textContent='▶ Auto-Play';}rfRender();}
+function rfAuto(){
+  const btn=document.getElementById('rf-btn-auto');
+  if(rfAutoTimer){clearInterval(rfAutoTimer);rfAutoTimer=null;if(btn)btn.textContent='▶ Auto-Play';}
+  else{if(btn)btn.textContent='⏹ Stop';rfAutoTimer=setInterval(()=>{if(rfCurrent<RF_STEPS.length-1){rfCurrent++;rfRender();}else{clearInterval(rfAutoTimer);rfAutoTimer=null;if(btn)btn.textContent='▶ Auto-Play';}},3200);}
+}
+document.querySelectorAll('.inner-tab').forEach(t=>{
+  t.addEventListener('click',()=>{if(t.getAttribute('onclick')&&t.getAttribute('onclick').includes('realflow'))setTimeout(rfRender,80);});
 });
 </script>
 </body>
