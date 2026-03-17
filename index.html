@@ -1,0 +1,2954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Composable CDP on GCP — Architecture & Implementation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #04080f;
+  --bg2: #080e1a;
+  --bg3: #0c1525;
+  --card: #0d1627;
+  --card2: #111d30;
+  --border: #1a2d4a;
+  --border2: #223550;
+  --cyan: #00d4ff;
+  --cyan2: #00a8cc;
+  --amber: #f59e0b;
+  --amber2: #d97706;
+  --emerald: #10b981;
+  --rose: #f43f5e;
+  --violet: #8b5cf6;
+  --text: #e2e8f0;
+  --muted: #64748b;
+  --muted2: #94a3b8;
+  --glow-cyan: 0 0 20px rgba(0,212,255,0.3);
+  --glow-amber: 0 0 20px rgba(245,158,11,0.3);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'DM Mono',monospace;
+  overflow-x:hidden;
+  cursor:default;
+}
+
+/* CANVAS */
+#bg-canvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;opacity:.5}
+
+/* NAV */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  background:rgba(4,8,15,.85);
+  backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  padding:0 2rem;
+  display:flex;align-items:center;gap:0;
+  height:56px;
+}
+.nav-logo{
+  font-family:'Orbitron',monospace;
+  font-size:.85rem;font-weight:700;
+  color:var(--cyan);
+  letter-spacing:.1em;
+  margin-right:2rem;
+  white-space:nowrap;
+}
+.nav-logo span{color:var(--amber)}
+.nav-tabs{display:flex;gap:0;overflow-x:auto;flex:1;scrollbar-width:none}
+.nav-tabs::-webkit-scrollbar{display:none}
+.nav-tab{
+  padding:.85rem 1.1rem;
+  font-family:'DM Mono',monospace;
+  font-size:.7rem;font-weight:500;
+  color:var(--muted2);
+  cursor:pointer;
+  border-bottom:2px solid transparent;
+  transition:all .2s;
+  white-space:nowrap;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+}
+.nav-tab:hover{color:var(--cyan);background:rgba(0,212,255,.04)}
+.nav-tab.active{color:var(--cyan);border-bottom-color:var(--cyan)}
+
+/* LIVE BADGE */
+.live-badge{
+  display:flex;align-items:center;gap:.4rem;
+  font-size:.65rem;font-family:'DM Mono',monospace;
+  color:var(--emerald);
+  margin-left:auto;
+  white-space:nowrap;
+}
+.live-dot{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--emerald);
+  animation:pulse 1.4s infinite;
+}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)}}
+
+/* SECTIONS */
+.section{
+  display:none;
+  position:relative;z-index:1;
+  min-height:calc(100vh - 56px);
+  margin-top:56px;
+  padding:2.5rem 2rem 4rem;
+  max-width:1400px;
+  margin-left:auto;margin-right:auto;
+  animation:fadeUp .4s ease;
+}
+.section.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+/* HERO */
+#hero{
+  display:flex!important;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  min-height:100vh;
+  text-align:center;
+  padding-top:56px;
+}
+.hero-eyebrow{
+  font-size:.7rem;letter-spacing:.25em;
+  color:var(--cyan);text-transform:uppercase;
+  margin-bottom:1.5rem;
+  animation:fadeUp .5s ease;
+}
+.hero-title{
+  font-family:'Orbitron',monospace;
+  font-size:clamp(2.2rem,5vw,4rem);
+  font-weight:900;
+  line-height:1.1;
+  margin-bottom:1rem;
+  animation:fadeUp .5s .1s ease both;
+}
+.hero-title .accent{color:var(--cyan)}
+.hero-title .accent2{color:var(--amber)}
+.hero-sub{
+  font-size:.85rem;color:var(--muted2);
+  max-width:620px;line-height:1.8;
+  margin-bottom:2.5rem;
+  animation:fadeUp .5s .2s ease both;
+}
+.hero-metrics{
+  display:flex;gap:2rem;flex-wrap:wrap;justify-content:center;
+  animation:fadeUp .5s .3s ease both;
+}
+.hero-metric{
+  background:var(--card);
+  border:1px solid var(--border);
+  padding:1rem 1.5rem;
+  border-radius:8px;
+  text-align:center;
+}
+.hero-metric .val{
+  font-family:'Orbitron',monospace;
+  font-size:1.5rem;font-weight:700;
+  color:var(--cyan);
+}
+.hero-metric .lbl{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.2rem}
+
+/* DATA FLOW ANIMATION */
+.flow-container{
+  position:relative;
+  width:100%;max-width:900px;
+  margin:2rem auto 0;
+  animation:fadeUp .5s .4s ease both;
+}
+
+/* SECTION HEADER */
+.sec-header{margin-bottom:2rem}
+.sec-tag{
+  font-size:.65rem;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--cyan);margin-bottom:.5rem;display:block;
+}
+.sec-title{
+  font-family:'Orbitron',monospace;
+  font-size:1.5rem;font-weight:700;
+  margin-bottom:.5rem;
+}
+.sec-desc{font-size:.8rem;color:var(--muted2);line-height:1.8;max-width:720px}
+
+/* GRID */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}
+@media(max-width:900px){.grid-2,.grid-3,.grid-4{grid-template-columns:1fr}}
+
+/* CARDS */
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:1.5rem;
+  transition:all .25s;
+}
+.card:hover{border-color:var(--border2);background:var(--card2);transform:translateY(-2px);box-shadow:var(--glow-cyan)}
+.card-title{
+  font-size:.8rem;font-weight:600;
+  color:var(--text);margin-bottom:.6rem;
+  display:flex;align-items:center;gap:.5rem;
+}
+.card-body{font-size:.75rem;color:var(--muted2);line-height:1.7}
+
+/* CONNECTOR CARDS */
+.connector-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:10px;padding:1.2rem;
+  transition:all .3s;cursor:pointer;
+  position:relative;overflow:hidden;
+}
+.connector-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,var(--cyan),var(--violet));
+  transform:scaleX(0);transition:.3s;transform-origin:left;
+}
+.connector-card:hover::before{transform:scaleX(1)}
+.connector-card:hover{border-color:rgba(0,212,255,.3);box-shadow:var(--glow-cyan);transform:translateY(-3px)}
+.connector-icon{font-size:1.5rem;margin-bottom:.6rem}
+.connector-name{font-family:'Orbitron',monospace;font-size:.75rem;font-weight:600;color:var(--text);margin-bottom:.3rem}
+.connector-type{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.6rem}
+.connector-badge{
+  display:inline-block;
+  font-size:.6rem;padding:.15rem .5rem;border-radius:4px;
+  border:1px solid;margin:.1rem .1rem 0 0;
+}
+.badge-live{color:var(--emerald);border-color:var(--emerald);background:rgba(16,185,129,.08)}
+.badge-batch{color:var(--amber);border-color:var(--amber);background:rgba(245,158,11,.08)}
+.badge-stream{color:var(--cyan);border-color:var(--cyan);background:rgba(0,212,255,.08)}
+
+/* CODE BLOCK */
+.code-block{
+  background:#060c18;
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:1.2rem;
+  font-family:'DM Mono',monospace;
+  font-size:.72rem;line-height:1.8;
+  overflow-x:auto;
+  position:relative;
+}
+.code-block .k{color:#c792ea}
+.code-block .s{color:#c3e88d}
+.code-block .n{color:#82aaff}
+.code-block .v{color:#f78c6c}
+.code-block .c{color:#546e7a;font-style:italic}
+.code-tag{
+  position:absolute;top:.5rem;right:.8rem;
+  font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;
+}
+
+/* FLOW SVG */
+.arch-svg-wrap{
+  width:100%;overflow-x:auto;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:1.5rem;
+  margin:1.5rem 0;
+}
+
+/* TABLE */
+.data-table{width:100%;border-collapse:collapse;font-size:.74rem}
+.data-table th{
+  background:var(--bg3);color:var(--cyan);
+  padding:.7rem 1rem;text-align:left;
+  font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;
+  border-bottom:1px solid var(--border);
+}
+.data-table td{
+  padding:.65rem 1rem;border-bottom:1px solid rgba(26,45,74,.5);
+  color:var(--muted2);vertical-align:top;
+}
+.data-table tr:hover td{background:rgba(0,212,255,.02)}
+.data-table td:first-child{color:var(--text);font-weight:500}
+
+/* STATUS PILL */
+.pill{
+  display:inline-block;font-size:.6rem;padding:.2rem .55rem;
+  border-radius:20px;font-weight:500;
+}
+.pill-green{background:rgba(16,185,129,.15);color:var(--emerald)}
+.pill-amber{background:rgba(245,158,11,.15);color:var(--amber)}
+.pill-rose{background:rgba(244,63,94,.15);color:var(--rose)}
+.pill-cyan{background:rgba(0,212,255,.12);color:var(--cyan)}
+
+/* IDENTITY DIAGRAM */
+.id-visual{
+  position:relative;
+  min-height:340px;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:2rem;
+  overflow:hidden;
+}
+
+/* TIMELINE */
+.timeline{position:relative;padding-left:1.5rem}
+.timeline::before{content:'';position:absolute;left:0;top:0;bottom:0;width:1px;background:var(--border)}
+.tl-item{position:relative;margin-bottom:1.5rem}
+.tl-item::before{
+  content:'';position:absolute;left:-1.75rem;top:.3rem;
+  width:8px;height:8px;border-radius:50%;
+  background:var(--cyan);border:2px solid var(--bg);
+  box-shadow:0 0 8px var(--cyan);
+}
+.tl-title{font-size:.8rem;font-weight:600;color:var(--text);margin-bottom:.3rem}
+.tl-body{font-size:.73rem;color:var(--muted2);line-height:1.7}
+
+/* METRIC COUNTER */
+.metric-row{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem}
+.metric-box{
+  background:var(--card);border:1px solid var(--border);border-radius:8px;
+  padding:.9rem 1.2rem;flex:1;min-width:140px;
+}
+.metric-box .val{
+  font-family:'Orbitron',monospace;font-size:1.3rem;font-weight:700;
+  color:var(--cyan);
+}
+.metric-box .lbl{font-size:.62rem;color:var(--muted);margin-top:.2rem;text-transform:uppercase;letter-spacing:.08em}
+
+/* TABS inside section */
+.inner-tabs{display:flex;gap:.5rem;margin-bottom:1.5rem;flex-wrap:wrap}
+.inner-tab{
+  padding:.45rem 1rem;font-size:.72rem;
+  border-radius:6px;border:1px solid var(--border);
+  color:var(--muted2);cursor:pointer;transition:.2s;
+  font-family:'DM Mono',monospace;
+}
+.inner-tab:hover{border-color:var(--cyan);color:var(--cyan)}
+.inner-tab.active{background:rgba(0,212,255,.1);border-color:var(--cyan);color:var(--cyan)}
+.inner-panel{display:none}
+.inner-panel.active{display:block;animation:fadeUp .3s ease}
+
+/* ALERT BOX */
+.alert{
+  border-radius:8px;padding:1rem 1.2rem;
+  font-size:.76rem;line-height:1.7;margin:.8rem 0;
+  display:flex;gap:.7rem;
+}
+.alert-warn{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);color:#fbbf24}
+.alert-info{background:rgba(0,212,255,.07);border:1px solid rgba(0,212,255,.2);color:#67e8f9}
+.alert-danger{background:rgba(244,63,94,.08);border:1px solid rgba(244,63,94,.25);color:#fb7185}
+.alert-success{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);color:#34d399}
+
+/* FOOTER */
+footer{
+  position:relative;z-index:1;
+  background:var(--bg2);border-top:1px solid var(--border);
+  padding:2rem;text-align:center;
+  font-size:.7rem;color:var(--muted);
+}
+
+/* ANIMATED FLOW PATHS */
+@keyframes flowDash{
+  to{stroke-dashoffset:-40}
+}
+.flow-path{
+  fill:none;stroke-width:1.5;
+  stroke-dasharray:6 4;
+  animation:flowDash 1.2s linear infinite;
+}
+.flow-path-fast{animation-duration:.7s}
+.flow-path-slow{animation-duration:2s}
+
+/* DATA STREAM ANIMATION */
+@keyframes streamDot{
+  0%{opacity:0;transform:translateX(0)}
+  10%{opacity:1}
+  90%{opacity:1}
+  100%{opacity:0;transform:translateX(var(--travel))}
+}
+.stream-dot{animation:streamDot 2s linear infinite}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+
+/* CHIP */
+.chip{
+  display:inline-block;font-size:.62rem;
+  padding:.15rem .5rem;border-radius:4px;
+  background:var(--bg3);border:1px solid var(--border);
+  color:var(--muted2);margin:.1rem;
+}
+
+/* SECTION DIVIDER */
+.divider{height:1px;background:var(--border);margin:2rem 0;opacity:.5}
+
+/* TOOLTIP */
+[data-tip]{position:relative}
+[data-tip]:hover::after{
+  content:attr(data-tip);
+  position:absolute;bottom:110%;left:50%;transform:translateX(-50%);
+  background:var(--bg3);border:1px solid var(--border);
+  color:var(--text);font-size:.66rem;padding:.4rem .7rem;
+  border-radius:6px;white-space:nowrap;z-index:999;
+  pointer-events:none;
+}
+
+/* Collapse toggle */
+details summary{
+  cursor:pointer;font-size:.78rem;color:var(--cyan);
+  padding:.5rem 0;list-style:none;
+}
+details summary::-webkit-details-marker{display:none}
+details summary::before{content:'▶ ';font-size:.65rem;transition:.2s}
+details[open] summary::before{content:'▼ '}
+details > *:not(summary){padding:.5rem 0 .5rem 1rem}
+
+/* OPS DASHBOARD */
+.dash-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem}
+@media(max-width:900px){.dash-grid{grid-template-columns:1fr 1fr}}
+.dash-kpi{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:10px;padding:1.1rem 1.3rem;
+  position:relative;overflow:hidden;transition:.2s;
+}
+.dash-kpi:hover{border-color:var(--border2);transform:translateY(-1px)}
+.dash-kpi::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:2px;
+}
+.dash-kpi.ok::after{background:var(--emerald)}
+.dash-kpi.warn::after{background:var(--amber)}
+.dash-kpi.error::after{background:var(--rose)}
+.dash-kpi.info::after{background:var(--cyan)}
+.kpi-label{font-size:.6rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.4rem}
+.kpi-val{font-family:'Orbitron',monospace;font-size:1.4rem;font-weight:700}
+.kpi-delta{font-size:.65rem;margin-top:.3rem}
+.kpi-delta.up{color:var(--emerald)}
+.kpi-delta.down{color:var(--rose)}
+.kpi-delta.flat{color:var(--muted2)}
+
+.search-box{
+  display:flex;gap:.7rem;margin-bottom:1.5rem;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:10px;padding:1rem 1.2rem;align-items:center;
+}
+.search-input{
+  flex:1;background:var(--bg3);border:1px solid var(--border2);
+  border-radius:6px;padding:.55rem .9rem;
+  font-family:'DM Mono',monospace;font-size:.78rem;color:var(--text);
+  outline:none;transition:.2s;
+}
+.search-input:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(0,212,255,.1)}
+.search-btn{
+  padding:.55rem 1.2rem;background:var(--cyan);color:var(--bg);
+  border:none;border-radius:6px;font-family:'DM Mono',monospace;
+  font-size:.75rem;font-weight:600;cursor:pointer;transition:.15s;white-space:nowrap;
+}
+.search-btn:hover{background:var(--cyan2)}
+.search-result{
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:8px;padding:1.2rem;margin-top:.8rem;display:none;
+  animation:fadeUp .3s ease;
+}
+.search-result.visible{display:block}
+.search-result-header{
+  display:flex;align-items:center;gap:.8rem;margin-bottom:1rem;
+  padding-bottom:.8rem;border-bottom:1px solid var(--border);
+}
+.profile-avatar{
+  width:36px;height:36px;border-radius:50%;
+  background:linear-gradient(135deg,var(--cyan),var(--violet));
+  display:flex;align-items:center;justify-content:center;
+  font-size:.9rem;flex-shrink:0;
+}
+.profile-uid{font-family:'Orbitron',monospace;font-size:.8rem;color:var(--cyan)}
+.profile-meta{font-size:.7rem;color:var(--muted2)}
+
+.trend-canvas-wrap{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:10px;padding:1.2rem 1.4rem;margin-bottom:1.5rem;
+}
+.trend-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.8rem}
+.trend-title{font-size:.78rem;font-weight:600;color:var(--text)}
+.trend-legend{display:flex;gap:1rem}
+.trend-legend-item{display:flex;align-items:center;gap:.3rem;font-size:.65rem;color:var(--muted2)}
+.trend-legend-dot{width:8px;height:8px;border-radius:50%}
+
+.error-log{max-height:260px;overflow-y:auto;}
+.error-item{
+  display:flex;gap:.8rem;align-items:flex-start;
+  padding:.6rem 0;border-bottom:1px solid rgba(26,45,74,.5);
+  font-size:.7rem;
+}
+.error-item:last-child{border-bottom:none}
+.error-time{color:var(--muted);white-space:nowrap;font-size:.65rem;padding-top:.05rem}
+.error-icon{flex-shrink:0;margin-top:.05rem}
+.error-msg{color:var(--muted2);line-height:1.5}
+.error-msg strong{color:var(--text)}
+.error-tag{
+  margin-left:auto;flex-shrink:0;
+  font-size:.6rem;padding:.15rem .45rem;border-radius:4px;border:1px solid;
+}
+
+.gauge-wrap{display:flex;align-items:center;gap:1.5rem;padding:.5rem 0}
+.gauge-svg{flex-shrink:0}
+.gauge-info .val{font-family:'Orbitron',monospace;font-size:1.6rem;font-weight:700}
+.gauge-info .lbl{font-size:.65rem;color:var(--muted);margin-top:.2rem;text-transform:uppercase;letter-spacing:.1em}
+.gauge-info .sub{font-size:.7rem;color:var(--muted2);margin-top:.5rem;line-height:1.6}
+
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">GCP·<span>CDP</span></div>
+  <div class="nav-tabs">
+    <div class="nav-tab active" onclick="showSection('architecture')">Architecture</div>
+    <div class="nav-tab" onclick="showSection('offline-online')">Offline → Online</div>
+    <div class="nav-tab" onclick="showSection('connectors')">Data Connectors</div>
+    <div class="nav-tab" onclick="showSection('identity')">Identity Resolution</div>
+    <div class="nav-tab" onclick="showSection('schema')">Event Schema</div>
+    <div class="nav-tab" onclick="showSection('prereqs')">Prerequisites</div>
+    <div class="nav-tab" onclick="showSection('usecases')">Use Cases</div>
+    <div class="nav-tab" onclick="showSection('opsdash')" style="color:var(--amber)">⚡ Ops Dashboard</div>
+  </div>
+  <div class="live-badge">
+    <div class="live-dot"></div>
+    LIVE
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════ ARCHITECTURE ══════════════════════════════════ -->
+<section id="architecture" class="section active">
+  <div class="sec-header">
+    <span class="sec-tag">§ 01 — Blueprint</span>
+    <h1 class="sec-title">Composable CDP Architecture on <span style="color:var(--cyan)">GCP</span></h1>
+    <p class="sec-desc">A modular, cloud-native Customer Data Platform built on Google Cloud — combining BigQuery as the unified data warehouse, Pub/Sub for real-time event streaming, Dataflow for transformation, and Cloud Functions for activation — with full consent, identity, and governance layers.</p>
+  </div>
+
+  <!-- Live metrics -->
+  <div class="metric-row" id="live-metrics">
+    <div class="metric-box"><div class="val" id="m-events">0</div><div class="lbl">Events / sec</div></div>
+    <div class="metric-box"><div class="val" id="m-profiles">0</div><div class="lbl">Unified Profiles</div></div>
+    <div class="metric-box"><div class="val" id="m-latency">0ms</div><div class="lbl">P99 Latency</div></div>
+    <div class="metric-box"><div class="val" id="m-resolved">0%</div><div class="lbl">ID Match Rate</div></div>
+    <div class="metric-box"><div class="val" id="m-blocked">0</div><div class="lbl">Blocked Events</div></div>
+  </div>
+
+  <!-- Architecture SVG -->
+  <div class="arch-svg-wrap">
+    <svg id="arch-svg" viewBox="0 0 1100 580" xmlns="http://www.w3.org/2000/svg" style="width:100%;min-width:800px">
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#00d4ff" opacity=".7"/>
+        </marker>
+        <marker id="arr-amber" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#f59e0b" opacity=".7"/>
+        </marker>
+        <marker id="arr-violet" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#8b5cf6" opacity=".7"/>
+        </marker>
+        <filter id="glow-cyan"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <filter id="glow-amber"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <linearGradient id="gr-card" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#111d30"/>
+          <stop offset="100%" stop-color="#0d1627"/>
+        </linearGradient>
+      </defs>
+
+      <!-- LAYER LABELS -->
+      <text x="10" y="30" fill="#1a2d4a" font-family="DM Mono" font-size="9" text-transform="uppercase" letter-spacing="3">INGESTION</text>
+      <text x="10" y="165" fill="#1a2d4a" font-family="DM Mono" font-size="9" letter-spacing="3">STREAM / BATCH</text>
+      <text x="10" y="295" fill="#1a2d4a" font-family="DM Mono" font-size="9" letter-spacing="3">STORAGE & ID</text>
+      <text x="10" y="415" fill="#1a2d4a" font-family="DM Mono" font-size="9" letter-spacing="3">GOVERNANCE</text>
+      <text x="10" y="530" fill="#1a2d4a" font-family="DM Mono" font-size="9" letter-spacing="3">ACTIVATION</text>
+
+      <!-- Horizontal lane backgrounds -->
+      <rect x="80" y="8" width="1010" height="75" rx="6" fill="rgba(0,212,255,0.03)" stroke="rgba(0,212,255,0.08)" stroke-width="1"/>
+      <rect x="80" y="143" width="1010" height="75" rx="6" fill="rgba(139,92,246,0.03)" stroke="rgba(139,92,246,0.08)" stroke-width="1"/>
+      <rect x="80" y="273" width="1010" height="80" rx="6" fill="rgba(245,158,11,0.03)" stroke="rgba(245,158,11,0.08)" stroke-width="1"/>
+      <rect x="80" y="393" width="1010" height="60" rx="6" fill="rgba(244,63,94,0.04)" stroke="rgba(244,63,94,0.08)" stroke-width="1"/>
+      <rect x="80" y="503" width="1010" height="65" rx="6" fill="rgba(16,185,129,0.03)" stroke="rgba(16,185,129,0.08)" stroke-width="1"/>
+
+      <!-- INGESTION SOURCES -->
+      <g id="src-web">
+        <rect x="90" y="20" width="100" height="50" rx="6" fill="url(#gr-card)" stroke="#00d4ff" stroke-width="1" opacity=".9"/>
+        <text x="140" y="40" text-anchor="middle" fill="#00d4ff" font-family="DM Mono" font-size="9" font-weight="600">WEB SDK</text>
+        <text x="140" y="54" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">GA4 · Tag Mgr</text>
+        <text x="140" y="65" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Tealium</text>
+      </g>
+      <g id="src-mobile">
+        <rect x="205" y="20" width="100" height="50" rx="6" fill="url(#gr-card)" stroke="#00d4ff" stroke-width="1" opacity=".9"/>
+        <text x="255" y="40" text-anchor="middle" fill="#00d4ff" font-family="DM Mono" font-size="9" font-weight="600">MOBILE SDK</text>
+        <text x="255" y="54" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">iOS · Android</text>
+        <text x="255" y="65" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Flutter · RN</text>
+      </g>
+      <g id="src-crm">
+        <rect x="320" y="20" width="100" height="50" rx="6" fill="url(#gr-card)" stroke="#00d4ff" stroke-width="1" opacity=".9"/>
+        <text x="370" y="40" text-anchor="middle" fill="#00d4ff" font-family="DM Mono" font-size="9" font-weight="600">CRM / ERP</text>
+        <text x="370" y="54" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Salesforce</text>
+        <text x="370" y="65" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">SAP · HubSpot</text>
+      </g>
+      <g id="src-offline">
+        <rect x="435" y="20" width="100" height="50" rx="6" fill="url(#gr-card)" stroke="#f59e0b" stroke-width="1.5" opacity=".9"/>
+        <text x="485" y="40" text-anchor="middle" fill="#f59e0b" font-family="DM Mono" font-size="9" font-weight="600">OFFLINE</text>
+        <text x="485" y="54" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">POS · Call Ctr</text>
+        <text x="485" y="65" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Email · DM</text>
+      </g>
+      <g id="src-stream">
+        <rect x="550" y="20" width="100" height="50" rx="6" fill="url(#gr-card)" stroke="#00d4ff" stroke-width="1" opacity=".9"/>
+        <text x="600" y="40" text-anchor="middle" fill="#00d4ff" font-family="DM Mono" font-size="9" font-weight="600">STREAMING</text>
+        <text x="600" y="54" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">IoT · Kafka</text>
+        <text x="600" y="65" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Clickstream</text>
+      </g>
+      <g id="src-3p">
+        <rect x="665" y="20" width="100" height="50" rx="6" fill="url(#gr-card)" stroke="#8b5cf6" stroke-width="1" opacity=".9"/>
+        <text x="715" y="40" text-anchor="middle" fill="#8b5cf6" font-family="DM Mono" font-size="9" font-weight="600">3P DATA</text>
+        <text x="715" y="54" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">LiveRamp</text>
+        <text x="715" y="65" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Acxiom</text>
+      </g>
+      <g id="src-ads">
+        <rect x="780" y="20" width="110" height="50" rx="6" fill="url(#gr-card)" stroke="#8b5cf6" stroke-width="1" opacity=".9"/>
+        <text x="835" y="40" text-anchor="middle" fill="#8b5cf6" font-family="DM Mono" font-size="9" font-weight="600">AD PLATFORMS</text>
+        <text x="835" y="54" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Google · Meta</text>
+        <text x="835" y="65" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Amazon · SA360</text>
+      </g>
+
+      <!-- Arrows to Pub/Sub -->
+      <line x1="140" y1="70" x2="440" y2="150" stroke="#00d4ff" stroke-width="1" stroke-dasharray="4,3" opacity=".4" marker-end="url(#arr)"/>
+      <line x1="255" y1="70" x2="455" y2="150" stroke="#00d4ff" stroke-width="1" stroke-dasharray="4,3" opacity=".4" marker-end="url(#arr)"/>
+      <line x1="370" y1="70" x2="465" y2="150" stroke="#00d4ff" stroke-width="1" stroke-dasharray="4,3" opacity=".4" marker-end="url(#arr)"/>
+      <line x1="485" y1="70" x2="480" y2="150" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,3" opacity=".5" marker-end="url(#arr-amber)"/>
+      <line x1="600" y1="70" x2="495" y2="150" stroke="#00d4ff" stroke-width="1" stroke-dasharray="4,3" opacity=".4" marker-end="url(#arr)"/>
+      <line x1="715" y1="70" x2="520" y2="150" stroke="#8b5cf6" stroke-width="1" stroke-dasharray="4,3" opacity=".4" marker-end="url(#arr-violet)"/>
+      <line x1="835" y1="70" x2="540" y2="150" stroke="#8b5cf6" stroke-width="1" stroke-dasharray="4,3" opacity=".4" marker-end="url(#arr-violet)"/>
+
+      <!-- PUB/SUB LAYER -->
+      <rect x="170" y="150" width="140" height="55" rx="6" fill="url(#gr-card)" stroke="#8b5cf6" stroke-width="1.5"/>
+      <text x="240" y="170" text-anchor="middle" fill="#a78bfa" font-family="DM Mono" font-size="9" font-weight="600">CLOUD PUB/SUB</text>
+      <text x="240" y="184" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Real-time Event Bus</text>
+      <text x="240" y="196" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">10M+ msgs/sec</text>
+
+      <!-- DATAFLOW -->
+      <rect x="360" y="150" width="130" height="55" rx="6" fill="url(#gr-card)" stroke="#8b5cf6" stroke-width="1.5"/>
+      <text x="425" y="170" text-anchor="middle" fill="#a78bfa" font-family="DM Mono" font-size="9" font-weight="600">DATAFLOW</text>
+      <text x="425" y="184" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Beam Transforms</text>
+      <text x="425" y="196" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Enrich · Dedupe</text>
+
+      <!-- CLOUD FUNCTIONS -->
+      <rect x="540" y="150" width="130" height="55" rx="6" fill="url(#gr-card)" stroke="#8b5cf6" stroke-width="1.5"/>
+      <text x="605" y="170" text-anchor="middle" fill="#a78bfa" font-family="DM Mono" font-size="9" font-weight="600">CLOUD FUNCTIONS</text>
+      <text x="605" y="184" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Validation · Rules</text>
+      <text x="605" y="196" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Consent Check</text>
+
+      <!-- BQ BATCH -->
+      <rect x="730" y="150" width="140" height="55" rx="6" fill="url(#gr-card)" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="800" y="170" text-anchor="middle" fill="#fbbf24" font-family="DM Mono" font-size="9" font-weight="600">BIGQUERY ML</text>
+      <text x="800" y="184" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Propensity · LTV</text>
+      <text x="800" y="196" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Audience Scoring</text>
+
+      <!-- H arrows layer 2 to 3 -->
+      <line x1="310" y1="177" x2="360" y2="177" stroke="#8b5cf6" stroke-width="1" stroke-dasharray="4,3" opacity=".5" marker-end="url(#arr-violet)"/>
+      <line x1="490" y1="177" x2="540" y2="177" stroke="#8b5cf6" stroke-width="1" stroke-dasharray="4,3" opacity=".5" marker-end="url(#arr-violet)"/>
+      <line x1="670" y1="177" x2="730" y2="177" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,3" opacity=".5" marker-end="url(#arr-amber)"/>
+
+      <!-- V arrows to storage -->
+      <line x1="425" y1="205" x2="425" y2="278" stroke="#8b5cf6" stroke-width="1" stroke-dasharray="4,3" opacity=".4" marker-end="url(#arr-violet)"/>
+      <line x1="605" y1="205" x2="540" y2="278" stroke="#00d4ff" stroke-width="1" stroke-dasharray="4,3" opacity=".4" marker-end="url(#arr)"/>
+      <line x1="800" y1="205" x2="700" y2="278" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,3" opacity=".4" marker-end="url(#arr-amber)"/>
+
+      <!-- STORAGE LAYER -->
+      <rect x="90" y="280" width="130" height="65" rx="6" fill="url(#gr-card)" stroke="#f59e0b" stroke-width="2"/>
+      <text x="155" y="298" text-anchor="middle" fill="#fbbf24" font-family="DM Mono" font-size="9" font-weight="600">BIGQUERY</text>
+      <text x="155" y="311" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Event Tables</text>
+      <text x="155" y="322" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Profile Store</text>
+      <text x="155" y="333" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Audience Tables</text>
+
+      <rect x="265" y="280" width="130" height="65" rx="6" fill="url(#gr-card)" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="330" y="298" text-anchor="middle" fill="#fbbf24" font-family="DM Mono" font-size="9" font-weight="600">FIRESTORE</text>
+      <text x="330" y="311" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Real-time Profiles</text>
+      <text x="330" y="322" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Session State</text>
+      <text x="330" y="333" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Consent Flags</text>
+
+      <rect x="440" y="280" width="140" height="65" rx="6" fill="url(#gr-card)" stroke="#00d4ff" stroke-width="2" filter="url(#glow-cyan)"/>
+      <text x="510" y="298" text-anchor="middle" fill="#00d4ff" font-family="DM Mono" font-size="9" font-weight="700">IDENTITY GRAPH</text>
+      <text x="510" y="311" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Golden Record</text>
+      <text x="510" y="322" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Cross-Device Map</text>
+      <text x="510" y="333" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Collision Rules</text>
+
+      <rect x="630" y="280" width="130" height="65" rx="6" fill="url(#gr-card)" stroke="#8b5cf6" stroke-width="1.5"/>
+      <text x="695" y="298" text-anchor="middle" fill="#a78bfa" font-family="DM Mono" font-size="9" font-weight="600">CLOUD STORAGE</text>
+      <text x="695" y="311" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Raw Event Archive</text>
+      <text x="695" y="322" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Model Artefacts</text>
+      <text x="695" y="333" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Audience Exports</text>
+
+      <rect x="810" y="280" width="130" height="65" rx="6" fill="url(#gr-card)" stroke="#10b981" stroke-width="1.5"/>
+      <text x="875" y="298" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="9" font-weight="600">DATA CATALOG</text>
+      <text x="875" y="311" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Schema Registry</text>
+      <text x="875" y="322" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">PII Classification</text>
+      <text x="875" y="333" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Lineage Tracking</text>
+
+      <!-- GOVERNANCE LAYER -->
+      <rect x="90" y="400" width="180" height="45" rx="6" fill="url(#gr-card)" stroke="#f43f5e" stroke-width="1.5"/>
+      <text x="180" y="418" text-anchor="middle" fill="#fb7185" font-family="DM Mono" font-size="9" font-weight="600">CONSENT ENGINE</text>
+      <text x="180" y="432" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">GDPR · PECR · TCF 2.2</text>
+
+      <rect x="290" y="400" width="180" height="45" rx="6" fill="url(#gr-card)" stroke="#f43f5e" stroke-width="1.5"/>
+      <text x="380" y="418" text-anchor="middle" fill="#fb7185" font-family="DM Mono" font-size="9" font-weight="600">ACCESS CONTROL</text>
+      <text x="380" y="432" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">IAM · VPC-SC · CMEK</text>
+
+      <rect x="490" y="400" width="180" height="45" rx="6" fill="url(#gr-card)" stroke="#f43f5e" stroke-width="1.5"/>
+      <text x="580" y="418" text-anchor="middle" fill="#fb7185" font-family="DM Mono" font-size="9" font-weight="600">EGRESS THROTTLE</text>
+      <text x="580" y="432" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Rate Limits · DLP · Audit</text>
+
+      <rect x="690" y="400" width="200" height="45" rx="6" fill="url(#gr-card)" stroke="#f43f5e" stroke-width="1.5"/>
+      <text x="790" y="418" text-anchor="middle" fill="#fb7185" font-family="DM Mono" font-size="9" font-weight="600">BLOCKING RULES</text>
+      <text x="790" y="432" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Suppression · DSR · Quarantine</text>
+
+      <!-- V arrows storage → governance -->
+      <line x1="155" y1="345" x2="180" y2="400" stroke="#f43f5e" stroke-width="1" stroke-dasharray="3,3" opacity=".35" marker-end="url(#arr)"/>
+      <line x1="510" y1="345" x2="510" y2="400" stroke="#f43f5e" stroke-width="1" stroke-dasharray="3,3" opacity=".35" marker-end="url(#arr)"/>
+
+      <!-- ACTIVATION LAYER -->
+      <rect x="90" y="510" width="100" height="45" rx="6" fill="url(#gr-card)" stroke="#10b981" stroke-width="1.5"/>
+      <text x="140" y="528" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="8.5" font-weight="600">GOOGLE ADS</text>
+      <text x="140" y="542" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">Customer Match</text>
+
+      <rect x="205" y="510" width="100" height="45" rx="6" fill="url(#gr-card)" stroke="#10b981" stroke-width="1.5"/>
+      <text x="255" y="528" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="8.5" font-weight="600">META ADS</text>
+      <text x="255" y="542" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">CAPI · Custom Aud</text>
+
+      <rect x="320" y="510" width="100" height="45" rx="6" fill="url(#gr-card)" stroke="#10b981" stroke-width="1.5"/>
+      <text x="370" y="528" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="8.5" font-weight="600">AMAZON DSP</text>
+      <text x="370" y="542" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">AMC · Sponsored</text>
+
+      <rect x="435" y="510" width="100" height="45" rx="6" fill="url(#gr-card)" stroke="#10b981" stroke-width="1.5"/>
+      <text x="485" y="528" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="8.5" font-weight="600">SA360</text>
+      <text x="485" y="542" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">Floodlight · Bid Adj</text>
+
+      <rect x="550" y="510" width="100" height="45" rx="6" fill="url(#gr-card)" stroke="#10b981" stroke-width="1.5"/>
+      <text x="600" y="528" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="8.5" font-weight="600">mOENGAGE</text>
+      <text x="600" y="542" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">Push · Email · In-app</text>
+
+      <rect x="665" y="510" width="100" height="45" rx="6" fill="url(#gr-card)" stroke="#10b981" stroke-width="1.5"/>
+      <text x="715" y="528" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="8.5" font-weight="600">AMPLITUDE</text>
+      <text x="715" y="542" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">Cohorts · Funnels</text>
+
+      <rect x="780" y="510" width="100" height="45" rx="6" fill="url(#gr-card)" stroke="#10b981" stroke-width="1.5"/>
+      <text x="830" y="528" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="8.5" font-weight="600">APPSFLYER</text>
+      <text x="830" y="542" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">MMP · SKAN · PBA</text>
+
+      <!-- Governance to Activation arrows -->
+      <line x1="380" y1="445" x2="380" y2="510" stroke="#10b981" stroke-width="1" stroke-dasharray="4,3" opacity=".35" marker-end="url(#arr)"/>
+      <line x1="580" y1="445" x2="580" y2="510" stroke="#10b981" stroke-width="1" stroke-dasharray="4,3" opacity=".35" marker-end="url(#arr)"/>
+
+      <!-- Animated flow dots -->
+      <circle class="stream-dot" r="3" fill="#00d4ff" style="--travel:100px">
+        <animateMotion dur="2s" repeatCount="indefinite" path="M140,70 Q300,110 425,150"/>
+      </circle>
+      <circle class="stream-dot" r="3" fill="#f59e0b" style="--travel:100px">
+        <animateMotion dur="1.8s" repeatCount="indefinite" begin="0.6s" path="M485,70 L480,150"/>
+      </circle>
+      <circle class="stream-dot" r="3" fill="#8b5cf6" style="--travel:100px">
+        <animateMotion dur="2.2s" repeatCount="indefinite" begin="1.1s" path="M425,205 L425,280"/>
+      </circle>
+      <circle class="stream-dot" r="3" fill="#10b981" style="--travel:100px">
+        <animateMotion dur="2.5s" repeatCount="indefinite" begin="0.3s" path="M510,345 L510,400"/>
+      </circle>
+      <circle class="stream-dot" r="3" fill="#10b981" style="--travel:100px">
+        <animateMotion dur="3s" repeatCount="indefinite" begin="1s" path="M380,445 L380,510"/>
+      </circle>
+    </svg>
+  </div>
+
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-title">🔵 GCP Services Used</div>
+      <div class="card-body">
+        <span class="chip">BigQuery</span><span class="chip">Pub/Sub</span><span class="chip">Dataflow</span><span class="chip">Cloud Functions</span><span class="chip">Firestore</span><span class="chip">Cloud Run</span><span class="chip">GCS</span><span class="chip">Secret Manager</span><span class="chip">Data Catalog</span><span class="chip">DLP API</span><span class="chip">Cloud IAM</span><span class="chip">VPC-SC</span><span class="chip">CMEK</span><span class="chip">Vertex AI</span><span class="chip">Cloud Composer</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">📐 Architecture Principles</div>
+      <div class="card-body">
+        <div class="timeline" style="padding-left:1rem">
+          <div class="tl-item"><div class="tl-title">Warehouse-Native</div><div class="tl-body">BigQuery is the system of record — not a copy of data</div></div>
+          <div class="tl-item"><div class="tl-title">Composable Layers</div><div class="tl-body">Each layer is independently replaceable (no vendor lock-in per layer)</div></div>
+          <div class="tl-item"><div class="tl-title">Privacy First</div><div class="tl-body">Consent, blocking, and DLP enforced before egress — not after</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">⚡ SLA Targets</div>
+      <div class="card-body">
+        <table class="data-table">
+          <tr><td>Stream event ingestion</td><td><span class="pill pill-green">&lt; 200ms</span></td></tr>
+          <tr><td>Profile unification</td><td><span class="pill pill-green">&lt; 2s</span></td></tr>
+          <tr><td>Audience export</td><td><span class="pill pill-amber">&lt; 4hrs</span></td></tr>
+          <tr><td>DSR deletion</td><td><span class="pill pill-amber">&lt; 72hrs</span></td></tr>
+          <tr><td>API egress P99</td><td><span class="pill pill-green">&lt; 500ms</span></td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ OFFLINE → ONLINE ══════════════════════════════════ -->
+<section id="offline-online" class="section">
+  <div class="sec-header">
+    <span class="sec-tag">§ 02 — Integration</span>
+    <h1 class="sec-title">Offline → Online <span style="color:var(--amber)">Signal Bridging</span></h1>
+    <p class="sec-desc">Transform in-store, call-centre, and direct mail interactions into addressable digital signals — using deterministic ID matching, BigQuery computed events, and real-time profile enrichment via Firestore.</p>
+  </div>
+
+  <div class="inner-tabs">
+    <div class="inner-tab active" onclick="switchInner('offline','flow')">Data Flow</div>
+    <div class="inner-tab" onclick="switchInner('offline','schema')">Dummy Data</div>
+    <div class="inner-tab" onclick="switchInner('offline','enrichment')">Enrichment Logic</div>
+    <div class="inner-tab" onclick="switchInner('offline','use-cases')">Use Cases</div>
+  </div>
+
+  <div id="offline-flow" class="inner-panel active">
+    <!-- Animated flow -->
+    <div class="arch-svg-wrap">
+      <svg viewBox="0 0 900 280" xmlns="http://www.w3.org/2000/svg" style="width:100%;min-width:700px">
+        <defs>
+          <marker id="a2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#f59e0b" opacity=".8"/></marker>
+          <marker id="a2c" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#00d4ff" opacity=".8"/></marker>
+          <marker id="a2g" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#10b981" opacity=".8"/></marker>
+        </defs>
+
+        <!-- Offline Sources -->
+        <rect x="10" y="20" width="120" height="40" rx="5" fill="#0d1627" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="70" y="37" text-anchor="middle" fill="#fbbf24" font-family="DM Mono" font-size="8.5" font-weight="600">POS / STORE</text>
+        <text x="70" y="50" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">transaction_id · email</text>
+
+        <rect x="10" y="80" width="120" height="40" rx="5" fill="#0d1627" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="70" y="97" text-anchor="middle" fill="#fbbf24" font-family="DM Mono" font-size="8.5" font-weight="600">CALL CENTRE</text>
+        <text x="70" y="110" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">phone · crm_id</text>
+
+        <rect x="10" y="140" width="120" height="40" rx="5" fill="#0d1627" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="70" y="157" text-anchor="middle" fill="#fbbf24" font-family="DM Mono" font-size="8.5" font-weight="600">EMAIL OPENS</text>
+        <text x="70" y="170" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">hashed_email · campaign</text>
+
+        <rect x="10" y="200" width="120" height="40" rx="5" fill="#0d1627" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="70" y="217" text-anchor="middle" fill="#fbbf24" font-family="DM Mono" font-size="8.5" font-weight="600">DIRECT MAIL</text>
+        <text x="70" y="230" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">postcode · ref_code</text>
+
+        <!-- Arrow to BQ batch -->
+        <path d="M130,40 L190,115 L190,135" fill="none" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#a2)" opacity=".6"/>
+        <path d="M130,100 L190,120 L190,135" fill="none" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#a2)" opacity=".6"/>
+        <path d="M130,160 L190,140" fill="none" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#a2)" opacity=".6"/>
+        <path d="M130,220 L190,160" fill="none" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#a2)" opacity=".6"/>
+
+        <!-- BQ Offline Events -->
+        <rect x="190" y="100" width="140" height="65" rx="6" fill="#0d1627" stroke="#f59e0b" stroke-width="2"/>
+        <text x="260" y="118" text-anchor="middle" fill="#fbbf24" font-family="DM Mono" font-size="8.5" font-weight="700">BIGQUERY</text>
+        <text x="260" y="130" text-anchor="middle" fill="#94a3b8" font-family="DM Mono" font-size="7.5">offline_events</text>
+        <text x="260" y="142" text-anchor="middle" fill="#94a3b8" font-family="DM Mono" font-size="7.5">raw · normalized</text>
+        <text x="260" y="154" text-anchor="middle" fill="#94a3b8" font-family="DM Mono" font-size="7.5">SHA-256 hashed IDs</text>
+
+        <!-- Arrow to ID match -->
+        <line x1="330" y1="132" x2="390" y2="132" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#a2)" opacity=".7"/>
+
+        <!-- ID MATCHING -->
+        <rect x="390" y="100" width="140" height="65" rx="6" fill="#0d1627" stroke="#00d4ff" stroke-width="2"/>
+        <text x="460" y="118" text-anchor="middle" fill="#00d4ff" font-family="DM Mono" font-size="8.5" font-weight="700">ID MATCH</text>
+        <text x="460" y="130" text-anchor="middle" fill="#94a3b8" font-family="DM Mono" font-size="7.5">email → gaid/idfa</text>
+        <text x="460" y="142" text-anchor="middle" fill="#94a3b8" font-family="DM Mono" font-size="7.5">phone → device</text>
+        <text x="460" y="154" text-anchor="middle" fill="#94a3b8" font-family="DM Mono" font-size="7.5">Firestore lookup</text>
+
+        <!-- Arrow to Enriched Profile -->
+        <line x1="530" y1="132" x2="590" y2="132" stroke="#00d4ff" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#a2c)" opacity=".7"/>
+
+        <!-- ENRICHED PROFILE -->
+        <rect x="590" y="100" width="140" height="65" rx="6" fill="#0d1627" stroke="#00d4ff" stroke-width="2"/>
+        <text x="660" y="118" text-anchor="middle" fill="#00d4ff" font-family="DM Mono" font-size="8.5" font-weight="700">GOLDEN RECORD</text>
+        <text x="660" y="130" text-anchor="middle" fill="#94a3b8" font-family="DM Mono" font-size="7.5">Merged Profile</text>
+        <text x="660" y="142" text-anchor="middle" fill="#94a3b8" font-family="DM Mono" font-size="7.5">offline_score=HIGH</text>
+        <text x="660" y="154" text-anchor="middle" fill="#94a3b8" font-family="DM Mono" font-size="7.5">purchase_intent=0.87</text>
+
+        <!-- Arrow to activation -->
+        <line x1="730" y1="132" x2="790" y2="132" stroke="#10b981" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#a2g)" opacity=".7"/>
+
+        <!-- ACTIVATION -->
+        <rect x="790" y="90" width="100" height="35" rx="5" fill="#0d1627" stroke="#10b981" stroke-width="1.5"/>
+        <text x="840" y="104" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="8.5" font-weight="600">GOOGLE ADS</text>
+        <text x="840" y="116" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">Customer Match</text>
+
+        <rect x="790" y="135" width="100" height="35" rx="5" fill="#0d1627" stroke="#10b981" stroke-width="1.5"/>
+        <text x="840" y="149" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="8.5" font-weight="600">META CAPI</text>
+        <text x="840" y="161" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">Offline Conversions</text>
+
+        <rect x="790" y="180" width="100" height="35" rx="5" fill="#0d1627" stroke="#10b981" stroke-width="1.5"/>
+        <text x="840" y="194" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="8.5" font-weight="600">mOENGAGE</text>
+        <text x="840" y="206" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">Triggered Push</text>
+
+        <!-- animated dots -->
+        <circle r="3" fill="#f59e0b">
+          <animateMotion dur="2.5s" repeatCount="indefinite" path="M70,40 L190,132"/>
+        </circle>
+        <circle r="3" fill="#00d4ff">
+          <animateMotion dur="1.8s" repeatCount="indefinite" begin="0.4s" path="M330,132 L390,132"/>
+        </circle>
+        <circle r="3" fill="#10b981">
+          <animateMotion dur="2s" repeatCount="indefinite" begin="0.9s" path="M730,132 L840,107"/>
+        </circle>
+      </svg>
+    </div>
+
+    <div class="alert alert-info">ℹ️ All PII (email, phone, postcode) is SHA-256 hashed at source before entering BigQuery. Raw PII lives only in Cloud KMS-encrypted Secret Manager references used during match. Match keys are never stored in plaintext.</div>
+  </div>
+
+  <div id="offline-schema" class="inner-panel">
+    <div class="grid-2">
+      <div>
+        <p class="card-title" style="margin-bottom:.8rem">🛒 POS Transaction — Raw Offline Event</p>
+        <div class="code-block">
+          <span class="code-tag">BigQuery: cdp_raw.offline_events</span>
+<span class="c">-- Arriving from POS system via Cloud Pub/Sub</span>
+{
+  <span class="n">"event_id"</span>:        <span class="s">"evt_pos_20240317_0091234"</span>,
+  <span class="n">"event_type"</span>:      <span class="s">"purchase_offline"</span>,
+  <span class="n">"event_ts"</span>:        <span class="s">"2024-03-17T14:23:11Z"</span>,
+  <span class="n">"source"</span>:          <span class="s">"store_manchester_001"</span>,
+  <span class="n">"store_id"</span>:        <span class="s">"STR_MAN_001"</span>,
+  <span class="n">"transaction_id"</span>:  <span class="s">"TXN_2024_443920"</span>,
+  <span class="n">"revenue_gbp"</span>:     <span class="v">149.99</span>,
+  <span class="n">"items"</span>: [
+    { <span class="n">"sku"</span>: <span class="s">"PROD_SHOE_NK_001"</span>, <span class="n">"qty"</span>: <span class="v">1</span>, <span class="n">"price"</span>: <span class="v">149.99</span> }
+  ],
+  <span class="n">"identity"</span>: {
+    <span class="n">"email_sha256"</span>:   <span class="s">"a3d9c...f84e2"</span>,
+    <span class="n">"phone_sha256"</span>:   <span class="s">"b7f12...c93a1"</span>,
+    <span class="n">"loyalty_id"</span>:    <span class="s">"LYL_0092837"</span>
+  },
+  <span class="n">"enriched"</span>:        <span class="k">false</span>,
+  <span class="n">"consent_flags"</span>: {
+    <span class="n">"marketing"</span>: <span class="k">true</span>, <span class="n">"analytics"</span>: <span class="k">true</span>
+  }
+}
+        </div>
+      </div>
+      <div>
+        <p class="card-title" style="margin-bottom:.8rem">✅ Enriched Profile — Post Identity Match</p>
+        <div class="code-block">
+          <span class="code-tag">Firestore: profiles/{uid}</span>
+{
+  <span class="n">"uid"</span>:            <span class="s">"usr_8f2a9c_unified"</span>,
+  <span class="n">"created_at"</span>:    <span class="s">"2023-09-01T09:00:00Z"</span>,
+  <span class="n">"updated_at"</span>:    <span class="s">"2024-03-17T14:23:15Z"</span>,
+  <span class="n">"identity_keys"</span>: {
+    <span class="n">"email_sha256"</span>:  <span class="s">"a3d9c...f84e2"</span>,
+    <span class="n">"gaid"</span>:          <span class="s">"4f3a2b1c-..."</span>,
+    <span class="n">"idfa"</span>:          <span class="s">"E621E1F8-..."</span>,
+    <span class="n">"loyalty_id"</span>:   <span class="s">"LYL_0092837"</span>,
+    <span class="n">"crm_id"</span>:       <span class="s">"SF_CONTACT_00X9"</span>
+  },
+  <span class="n">"offline_signals"</span>: {
+    <span class="n">"last_store_visit"</span>:   <span class="s">"2024-03-17"</span>,
+    <span class="n">"total_offline_ltv"</span>:  <span class="v">1247.82</span>,
+    <span class="n">"purchase_frequency"</span>: <span class="v">3.2</span>,
+    <span class="n">"preferred_store"</span>:   <span class="s">"manchester"</span>
+  },
+  <span class="n">"scores"</span>: {
+    <span class="n">"churn_risk"</span>:     <span class="v">0.12</span>,
+    <span class="n">"purchase_intent"</span>:<span class="v">0.87</span>,
+    <span class="n">"ltv_percentile"</span>: <span class="v">94</span>
+  },
+  <span class="n">"audiences"</span>: [
+    <span class="s">"high_value_offline"</span>, <span class="s">"footwear_buyer"</span>,
+    <span class="s">"q1_active"</span>, <span class="s">"win_back_exclude"</span>
+  ]
+}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="offline-enrichment" class="inner-panel">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">🔄 BigQuery Computed Events — SQL Logic</div>
+        <div class="code-block" style="font-size:.68rem">
+<span class="c">-- Scheduled daily via Cloud Composer</span>
+<span class="k">CREATE OR REPLACE TABLE</span>
+  cdp.computed_offline_online_bridge <span class="k">AS</span>
+<span class="k">WITH</span> matched <span class="k">AS</span> (
+  <span class="k">SELECT</span>
+    o.event_id,
+    o.event_ts,
+    o.revenue_gbp,
+    p.uid          <span class="k">AS</span> unified_uid,
+    p.gaid,        <span class="c">-- resolved from Firestore</span>
+    p.idfa,
+    <span class="s">'purchase_offline'</span> <span class="k">AS</span> online_event_type,
+    o.store_id,
+    o.items
+  <span class="k">FROM</span> cdp_raw.offline_events o
+  <span class="k">JOIN</span> cdp.identity_map p
+    <span class="k">ON</span> o.identity.email_sha256 = p.email_sha256
+    <span class="k">OR</span> o.identity.loyalty_id   = p.loyalty_id
+  <span class="k">WHERE</span> o.enriched = <span class="k">false</span>
+    <span class="k">AND</span> o.consent_flags.analytics = <span class="k">true</span>
+)
+<span class="k">SELECT</span> *, <span class="k">CURRENT_TIMESTAMP()</span> <span class="k">AS</span> processed_at
+<span class="k">FROM</span> matched;
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">⚙️ Cloud Function — Real-time Enrichment Trigger</div>
+        <div class="code-block" style="font-size:.68rem">
+<span class="c"># Triggered by Pub/Sub message</span>
+<span class="k">import</span> functions_framework
+<span class="k">from</span> google.cloud <span class="k">import</span> firestore, bigquery
+
+@functions_framework.cloud_event
+<span class="k">def</span> <span class="n">enrich_offline_event</span>(cloud_event):
+    data = cloud_event.data
+    email_hash = data[<span class="s">'identity'</span>][<span class="s">'email_sha256'</span>]
+    
+    <span class="c"># 1. Lookup identity in Firestore</span>
+    db = firestore.Client()
+    profile = db.collection(<span class="s">'profiles'</span>)\
+        .where(<span class="s">'identity_keys.email_sha256'</span>,<span class="s">'=='</span>,email_hash)\
+        .limit(<span class="v">1</span>).get()
+    
+    <span class="k">if</span> profile:
+        uid = profile[<span class="v">0</span>].to_dict()[<span class="s">'uid'</span>]
+        
+        <span class="c"># 2. Write enriched event to BQ</span>
+        bq = bigquery.Client()
+        row = {**data, <span class="s">"unified_uid"</span>: uid,
+               <span class="s">"enriched"</span>: <span class="k">True</span>}
+        bq.insert_rows_json(
+          <span class="s">"cdp.enriched_offline_events"</span>, [row])
+        
+        <span class="c"># 3. Update profile last_seen</span>
+        profile[<span class="v">0</span>].reference.update({
+          <span class="s">"offline_signals.last_store_visit"</span>:
+            data[<span class="s">"event_ts"</span>]
+        })
+        </div>
+      </div>
+    </div>
+    <div class="alert alert-warn" style="margin-top:1rem">⚠️ Match Rate Reality: Expect 55–75% deterministic match rate for email-hashed offline events. Below that threshold, probabilistic matching via postcode + purchase pattern clustering (BigQuery ML KMEANS) is used — flagged as <code>match_confidence=PROBABILISTIC</code> and excluded from PII-sensitive activations.</div>
+  </div>
+
+  <div id="offline-use-cases" class="inner-panel">
+    <table class="data-table">
+      <thead><tr><th>Use Case</th><th>Offline Signal</th><th>Online Channel</th><th>Logic</th><th>Platform</th></tr></thead>
+      <tbody>
+        <tr><td>In-store Win-Back</td><td>Last purchase &gt; 90 days</td><td>Paid Social</td><td>Exclude recent buyers, target lapsed</td><td>Meta CAPI</td></tr>
+        <tr><td>Cross-sell Footwear → Apparel</td><td>footwear_buyer=true</td><td>Display / Search</td><td>Bid +40% for apparel queries</td><td>SA360 + GAds</td></tr>
+        <tr><td>Offline LTV → Digital ROAS</td><td>ltv_percentile > 80</td><td>Customer Match</td><td>High-value seed audience for lookalike</td><td>Google Ads</td></tr>
+        <tr><td>Call Centre Recovery</td><td>complaint_logged=true</td><td>In-App Message</td><td>Send apology + voucher within 2hrs</td><td>moEngage</td></tr>
+        <tr><td>Post-Purchase NPS</td><td>purchase within 24hrs</td><td>Email / Push</td><td>Trigger satisfaction survey</td><td>moEngage</td></tr>
+        <tr><td>Direct Mail Responders</td><td>ref_code scanned</td><td>Search + Display</td><td>Suppress DM audience; shift budget online</td><td>SA360</td></tr>
+        <tr><td>Loyalty Tier Upgrade</td><td>cumulative_ltv > £500</td><td>Push Notification</td><td>Platinum tier promotion</td><td>moEngage + Amplitude</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ CONNECTORS ══════════════════════════════════ -->
+<section id="connectors" class="section">
+  <div class="sec-header">
+    <span class="sec-tag">§ 03 — Activation</span>
+    <h1 class="sec-title">Data <span style="color:var(--emerald)">Connectors</span> & Egress</h1>
+    <p class="sec-desc">Activate BigQuery audiences and Firestore computed events into the full stack of paid media, analytics, and engagement platforms — with consent gating, rate limiting, and schema validation on every outbound pipe.</p>
+  </div>
+
+  <div class="grid-4" style="margin-bottom:2rem">
+    <div class="connector-card">
+      <div class="connector-icon">🔵</div>
+      <div class="connector-name">Google Ads</div>
+      <div class="connector-type">Paid Search · Display · YouTube</div>
+      <div><span class="connector-badge badge-live">LIVE</span><span class="connector-badge badge-batch">BATCH</span></div>
+      <div class="card-body" style="margin-top:.8rem;font-size:.7rem">
+        <strong style="color:var(--text)">Methods:</strong> Customer Match v2 API, RLSA, Display & Video 360 Audience Sharing<br><br>
+        <strong style="color:var(--text)">Auth:</strong> OAuth2 service account + Google Ads API token<br><br>
+        <strong style="color:var(--text)">Rate Limit:</strong> 100 req/min · 1M rows/upload<br><br>
+        <strong style="color:var(--text)">Latency:</strong> 6–24hrs match propagation<br><br>
+        <strong style="color:var(--text)">Consent:</strong> Requires explicit marketing consent + EEA consent mode v2<br><br>
+        <strong style="color:var(--text)">PII:</strong> SHA-256 email, phone, address only
+      </div>
+    </div>
+
+    <div class="connector-card">
+      <div class="connector-icon">🔷</div>
+      <div class="connector-name">Meta Ads (CAPI)</div>
+      <div class="connector-type">Facebook · Instagram · Threads</div>
+      <div><span class="connector-badge badge-live">LIVE</span><span class="connector-badge badge-batch">BATCH</span></div>
+      <div class="card-body" style="margin-top:.8rem;font-size:.7rem">
+        <strong style="color:var(--text)">Methods:</strong> Conversions API (CAPI) server-side, Custom Audiences<br><br>
+        <strong style="color:var(--text)">Auth:</strong> System User access token (never user token)<br><br>
+        <strong style="color:var(--text)">Rate Limit:</strong> 200 events/sec per pixel · 10K users/batch<br><br>
+        <strong style="color:var(--text)">Dedup:</strong> event_id + event_source_url required<br><br>
+        <strong style="color:var(--text)">Consent:</strong> data_processing_options must be set for LDU<br><br>
+        <strong style="color:var(--text)">Limitation:</strong> 7-day attribution window max for iOS14+
+      </div>
+    </div>
+
+    <div class="connector-card">
+      <div class="connector-icon">🟠</div>
+      <div class="connector-name">Amazon DSP / AMC</div>
+      <div class="connector-type">DSP · Sponsored · AMC</div>
+      <div><span class="connector-badge badge-batch">BATCH</span></div>
+      <div class="card-body" style="margin-top:.8rem;font-size:.7rem">
+        <strong style="color:var(--text)">Methods:</strong> Amazon Marketing Cloud (SQL) + DSP audience upload via S3<br><br>
+        <strong style="color:var(--text)">Auth:</strong> IAM role with AMC dataset access<br><br>
+        <strong style="color:var(--text)">Rate Limit:</strong> 1 BQ export/day · max 10M rows<br><br>
+        <strong style="color:var(--text)">Latency:</strong> 24–48hrs<br><br>
+        <strong style="color:var(--text)">Limitation:</strong> AMC data cannot be used to suppress audiences in real-time — batch only<br><br>
+        <strong style="color:var(--text)">Format:</strong> SHA-256 email → S3 → AMC match
+      </div>
+    </div>
+
+    <div class="connector-card">
+      <div class="connector-icon">🔴</div>
+      <div class="connector-name">Search Ads 360</div>
+      <div class="connector-type">Enterprise Search Management</div>
+      <div><span class="connector-badge badge-live">LIVE</span><span class="connector-badge badge-batch">BATCH</span></div>
+      <div class="card-body" style="margin-top:.8rem;font-size:.7rem">
+        <strong style="color:var(--text)">Methods:</strong> Floodlight Activities, Audience Lists, Bid Adjustments via API v0<br><br>
+        <strong style="color:var(--text)">Auth:</strong> Service account + DV360 linking<br><br>
+        <strong style="color:var(--text)">BQ Native:</strong> SA360 → BigQuery export via Google Ads Data Hub<br><br>
+        <strong style="color:var(--text)">Latency:</strong> Real-time floodlight · 4–6hrs audience<br><br>
+        <strong style="color:var(--text)">Consent:</strong> Inherits Google Ads consent mode signals
+      </div>
+    </div>
+
+    <div class="connector-card">
+      <div class="connector-icon">💜</div>
+      <div class="connector-name">moEngage</div>
+      <div class="connector-type">Multi-channel Engagement</div>
+      <div><span class="connector-badge badge-live">LIVE</span><span class="connector-badge badge-stream">STREAM</span></div>
+      <div class="card-body" style="margin-top:.8rem;font-size:.7rem">
+        <strong style="color:var(--text)">Methods:</strong> Events API v1, User Attribute API, Segment Sync<br><br>
+        <strong style="color:var(--text)">Auth:</strong> App ID + Secret Key (stored in Secret Manager)<br><br>
+        <strong style="color:var(--text)">Rate Limit:</strong> 500 events/sec · 2K users/bulk call<br><br>
+        <strong style="color:var(--text)">Trigger:</strong> Pub/Sub → Cloud Run → moEngage Events API<br><br>
+        <strong style="color:var(--text)">Channels:</strong> Push, Email, SMS, In-App, WhatsApp<br><br>
+        <strong style="color:var(--text)">Limitation:</strong> No native BQ connector — requires Cloud Function bridge
+      </div>
+    </div>
+
+    <div class="connector-card">
+      <div class="connector-icon">🟡</div>
+      <div class="connector-name">Amplitude</div>
+      <div class="connector-type">Product Analytics · Cohorts</div>
+      <div><span class="connector-badge badge-live">LIVE</span><span class="connector-badge badge-batch">BATCH</span></div>
+      <div class="card-body" style="margin-top:.8rem;font-size:.7rem">
+        <strong style="color:var(--text)">Methods:</strong> HTTP API v2, Identify API, Cohort Sync via Amplitude Data<br><br>
+        <strong style="color:var(--text)">BQ Native:</strong> Amplitude → BQ export (one-way); BQ → Amplitude via HTTP<br><br>
+        <strong style="color:var(--text)">Rate Limit:</strong> 30 events/sec per key<br><br>
+        <strong style="color:var(--text)">Dedup:</strong> insert_id required to prevent duplicates<br><br>
+        <strong style="color:var(--text)">Limitation:</strong> Cohort sync latency 15–30 min; no real-time push from BQ
+      </div>
+    </div>
+
+    <div class="connector-card">
+      <div class="connector-icon">🟢</div>
+      <div class="connector-name">AppsFlyer</div>
+      <div class="connector-type">MMP · SKAN · PBA</div>
+      <div><span class="connector-badge badge-live">LIVE</span><span class="connector-badge badge-batch">BATCH</span></div>
+      <div class="card-body" style="margin-top:.8rem;font-size:.7rem">
+        <strong style="color:var(--text)">Methods:</strong> S2S Events API, People-Based Attribution, Data Locker → GCS<br><br>
+        <strong style="color:var(--text)">Auth:</strong> Dev key per app + S2S auth token<br><br>
+        <strong style="color:var(--text)">BQ:</strong> Data Locker writes raw attribution to GCS → BQ external table<br><br>
+        <strong style="color:var(--text)">Constraint:</strong> DSR deletion must go via AppsFlyer API — CDP cannot directly delete AF data<br><br>
+        <strong style="color:var(--text)">SKAN:</strong> Postbacks received via callback URL → Cloud Function → BQ
+      </div>
+    </div>
+
+    <div class="connector-card">
+      <div class="connector-icon">📊</div>
+      <div class="connector-name">BigQuery (Internal)</div>
+      <div class="connector-type">Computed Offline Events</div>
+      <div><span class="connector-badge badge-stream">STREAM</span><span class="connector-badge badge-batch">BATCH</span></div>
+      <div class="card-body" style="margin-top:.8rem;font-size:.7rem">
+        <strong style="color:var(--text)">Pattern:</strong> BQ scheduled query → audience table → export trigger<br><br>
+        <strong style="color:var(--text)">Firestore:</strong> BQ → Dataflow → Firestore for real-time profile lookup<br><br>
+        <strong style="color:var(--text)">Rate:</strong> Streaming inserts: 1GB/s sustained<br><br>
+        <strong style="color:var(--text)">Cost:</strong> Storage: £0.016/GB/mo · Query: £4.50/TB<br><br>
+        <strong style="color:var(--text)">Limitation:</strong> BQ streaming inserts not instantly queryable (30-90s delay)
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="sec-header" style="margin-top:1.5rem">
+    <h2 class="sec-title" style="font-size:1.1rem">Connector Egress Architecture</h2>
+  </div>
+
+  <div class="arch-svg-wrap">
+    <svg viewBox="0 0 900 200" xmlns="http://www.w3.org/2000/svg" style="width:100%;min-width:700px">
+      <defs>
+        <marker id="ae" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#10b981" opacity=".8"/></marker>
+      </defs>
+
+      <rect x="10" y="75" width="120" height="50" rx="6" fill="#0d1627" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="70" y="97" text-anchor="middle" fill="#fbbf24" font-family="DM Mono" font-size="8.5" font-weight="600">BIGQUERY</text>
+      <text x="70" y="110" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7.5">Audience Tables</text>
+      <text x="70" y="121" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">Scheduled Queries</text>
+
+      <line x1="130" y1="100" x2="175" y2="100" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#ae)" opacity=".7"/>
+
+      <rect x="175" y="70" width="120" height="60" rx="6" fill="#0d1627" stroke="#f43f5e" stroke-width="1.5"/>
+      <text x="235" y="90" text-anchor="middle" fill="#fb7185" font-family="DM Mono" font-size="8" font-weight="600">EGRESS GATE</text>
+      <text x="235" y="102" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">Consent Check</text>
+      <text x="235" y="113" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">Rate Throttle</text>
+      <text x="235" y="124" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">Schema Validate</text>
+
+      <line x1="295" y1="100" x2="340" y2="100" stroke="#10b981" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#ae)" opacity=".7"/>
+
+      <rect x="340" y="70" width="110" height="60" rx="6" fill="#0d1627" stroke="#8b5cf6" stroke-width="1.5"/>
+      <text x="395" y="90" text-anchor="middle" fill="#a78bfa" font-family="DM Mono" font-size="8" font-weight="600">CLOUD RUN</text>
+      <text x="395" y="102" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">Connector Services</text>
+      <text x="395" y="113" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">Per-destination</text>
+      <text x="395" y="124" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">Retry + DLQ</text>
+
+      <line x1="450" y1="85" x2="500" y2="40" stroke="#10b981" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#ae)" opacity=".6"/>
+      <line x1="450" y1="90" x2="500" y2="70" stroke="#10b981" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#ae)" opacity=".6"/>
+      <line x1="450" y1="100" x2="500" y2="100" stroke="#10b981" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#ae)" opacity=".6"/>
+      <line x1="450" y1="110" x2="500" y2="130" stroke="#10b981" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#ae)" opacity=".6"/>
+      <line x1="450" y1="115" x2="500" y2="160" stroke="#10b981" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#ae)" opacity=".6"/>
+
+      <rect x="500" y="20" width="95" height="30" rx="5" fill="#0d1627" stroke="#10b981" stroke-width="1.2"/>
+      <text x="547" y="33" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="8" font-weight="600">GOOGLE ADS</text>
+      <text x="547" y="44" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="6.5">Cust. Match</text>
+
+      <rect x="500" y="55" width="95" height="30" rx="5" fill="#0d1627" stroke="#10b981" stroke-width="1.2"/>
+      <text x="547" y="68" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="8" font-weight="600">META CAPI</text>
+      <text x="547" y="79" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="6.5">S2S Events</text>
+
+      <rect x="500" y="85" width="95" height="30" rx="5" fill="#0d1627" stroke="#10b981" stroke-width="1.2"/>
+      <text x="547" y="98" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="8" font-weight="600">SA360</text>
+      <text x="547" y="109" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="6.5">Floodlight</text>
+
+      <rect x="500" y="115" width="95" height="30" rx="5" fill="#0d1627" stroke="#10b981" stroke-width="1.2"/>
+      <text x="547" y="128" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="8" font-weight="600">mOENGAGE</text>
+      <text x="547" y="139" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="6.5">Events API</text>
+
+      <rect x="500" y="145" width="95" height="30" rx="5" fill="#0d1627" stroke="#10b981" stroke-width="1.2"/>
+      <text x="547" y="158" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="8" font-weight="600">APPSFLYER</text>
+      <text x="547" y="169" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="6.5">S2S + Data Locker</text>
+
+      <!-- Audit trail -->
+      <rect x="650" y="70" width="120" height="60" rx="6" fill="#0d1627" stroke="#00d4ff" stroke-width="1.5"/>
+      <text x="710" y="90" text-anchor="middle" fill="#00d4ff" font-family="DM Mono" font-size="8" font-weight="600">AUDIT TRAIL</text>
+      <text x="710" y="102" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">BQ: egress_audit_log</text>
+      <text x="710" y="113" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">Cloud Audit Logs</text>
+      <text x="710" y="124" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">Cloud Monitoring</text>
+
+      <line x1="595" y1="100" x2="650" y2="100" stroke="#00d4ff" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#ae)" opacity=".5"/>
+
+      <!-- animated -->
+      <circle r="3" fill="#10b981">
+        <animateMotion dur="2s" repeatCount="indefinite" path="M130,100 L175,100"/>
+      </circle>
+      <circle r="3" fill="#f43f5e">
+        <animateMotion dur="1.5s" repeatCount="indefinite" begin=".5s" path="M295,100 L340,100"/>
+      </circle>
+      <circle r="3" fill="#34d399">
+        <animateMotion dur="2s" repeatCount="indefinite" begin="1s" path="M450,100 L547,100"/>
+      </circle>
+    </svg>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">📋 Egress Throttle Config</div>
+      <div class="code-block" style="font-size:.68rem">
+<span class="c"># Cloud Run connector config (per destination)</span>
+egress_config:
+  google_ads:
+    max_rps: <span class="v">10</span>
+    daily_row_limit: <span class="v">1_000_000</span>
+    retry_attempts: <span class="v">3</span>
+    backoff_strategy: <span class="s">exponential</span>
+    dlq_topic: <span class="s">cdp-egress-dlq-gads</span>
+
+  meta_capi:
+    max_events_per_sec: <span class="v">200</span>
+    batch_size: <span class="v">50</span>
+    dedup_window_hrs: <span class="v">48</span>
+    retry_on_codes: [<span class="v">429</span>, <span class="v">500</span>, <span class="v">503</span>]
+
+  moengage:
+    max_rps: <span class="v">500</span>
+    bulk_limit: <span class="v">2000</span>
+    timeout_ms: <span class="v">5000</span>
+    circuit_breaker: <span class="k">enabled</span>
+
+  appsflyer:
+    s2s_rps: <span class="v">100</span>
+    data_locker_sync: <span class="s">daily_02:00_UTC</span>
+    skan_postback_validation: <span class="k">strict</span>
+      </div>
+    </div>
+    <div>
+      <div class="alert alert-warn">⚠️ <strong>Meta CAPI:</strong> Always send event_id as SHA-256(session_id + event_name + timestamp). Without this, dedup at Meta fails silently — you will see inflated conversion counts with no error.</div>
+      <div class="alert alert-danger">🚨 <strong>AppsFlyer DSR:</strong> When a user submits a deletion request, you MUST call the AppsFlyer GDPR API directly. Your CDP cannot delete data from AppsFlyer's servers — only AF can. SLA: 72hrs.</div>
+      <div class="alert alert-success">✅ <strong>SA360 + BQ Native:</strong> Use Google Ads Data Hub as the privacy-safe clean room — compute audiences in BQ with DH, push back to SA360 without exposing raw user IDs.</div>
+      <div class="alert alert-info">ℹ️ <strong>Amplitude Dedup:</strong> Always populate insert_id with event_id from your schema. Amplitude de-duplicates on this field within a 7-day window — without it, retry storms create phantom events.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ IDENTITY RESOLUTION ══════════════════════════════════ -->
+<section id="identity" class="section">
+  <div class="sec-header">
+    <span class="sec-tag">§ 04 — Identity</span>
+    <h1 class="sec-title">Identity Resolution & <span style="color:var(--violet)">Collision Strategy</span></h1>
+    <p class="sec-desc">Deterministic and probabilistic matching across web, mobile, offline, and CRM identity spaces — with a full collision resolution framework covering merge, split, override, and quarantine strategies.</p>
+  </div>
+
+  <div class="inner-tabs">
+    <div class="inner-tab active" onclick="switchInner('identity','graph')">Identity Graph</div>
+    <div class="inner-tab" onclick="switchInner('identity','collision')">Collision Strategy</div>
+    <div class="inner-tab" onclick="switchInner('identity','rollback')">⏪ Fallback & Rollback</div>
+    <div class="inner-tab" onclick="switchInner('identity','schema')">Data Model</div>
+    <div class="inner-tab" onclick="switchInner('identity','limits')">Limitations</div>
+  </div>
+
+  <div id="identity-graph" class="inner-panel active">
+    <div class="arch-svg-wrap">
+      <svg viewBox="0 0 900 350" xmlns="http://www.w3.org/2000/svg" style="width:100%;min-width:700px">
+        <defs>
+          <marker id="aid" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3 z" fill="#8b5cf6" opacity=".8"/></marker>
+        </defs>
+
+        <!-- Central Golden Record -->
+        <circle cx="450" cy="175" r="55" fill="rgba(0,212,255,0.08)" stroke="#00d4ff" stroke-width="2"/>
+        <circle cx="450" cy="175" r="45" fill="rgba(0,212,255,0.05)" stroke="#00d4ff" stroke-width="1" stroke-dasharray="4,3">
+          <animateTransform attributeName="transform" type="rotate" from="0 450 175" to="360 450 175" dur="20s" repeatCount="indefinite"/>
+        </circle>
+        <text x="450" y="168" text-anchor="middle" fill="#00d4ff" font-family="Orbitron" font-size="10" font-weight="700">GOLDEN</text>
+        <text x="450" y="182" text-anchor="middle" fill="#00d4ff" font-family="Orbitron" font-size="10" font-weight="700">RECORD</text>
+        <text x="450" y="196" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">uid: usr_8f2a9c</text>
+
+        <!-- Identity Nodes -->
+        <g>
+          <ellipse cx="160" cy="60" rx="70" ry="28" fill="#0d1627" stroke="#8b5cf6" stroke-width="1.5"/>
+          <text x="160" y="55" text-anchor="middle" fill="#a78bfa" font-family="DM Mono" font-size="8.5" font-weight="600">EMAIL SHA256</text>
+          <text x="160" y="68" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">a3d9c...f84e2</text>
+          <text x="160" y="78" text-anchor="middle" fill="#10b981" font-family="DM Mono" font-size="6.5">DETERMINISTIC · HIGH</text>
+        </g>
+
+        <g>
+          <ellipse cx="160" cy="160" rx="70" ry="28" fill="#0d1627" stroke="#8b5cf6" stroke-width="1.5"/>
+          <text x="160" y="155" text-anchor="middle" fill="#a78bfa" font-family="DM Mono" font-size="8.5" font-weight="600">PHONE SHA256</text>
+          <text x="160" y="168" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">b7f12...c93a1</text>
+          <text x="160" y="178" text-anchor="middle" fill="#10b981" font-family="DM Mono" font-size="6.5">DETERMINISTIC · HIGH</text>
+        </g>
+
+        <g>
+          <ellipse cx="160" cy="260" rx="70" ry="28" fill="#0d1627" stroke="#8b5cf6" stroke-width="1.5"/>
+          <text x="160" y="255" text-anchor="middle" fill="#a78bfa" font-family="DM Mono" font-size="8.5" font-weight="600">LOYALTY ID</text>
+          <text x="160" y="268" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">LYL_0092837</text>
+          <text x="160" y="278" text-anchor="middle" fill="#10b981" font-family="DM Mono" font-size="6.5">DETERMINISTIC · HIGH</text>
+        </g>
+
+        <g>
+          <ellipse cx="740" cy="60" rx="70" ry="28" fill="#0d1627" stroke="#00d4ff" stroke-width="1.5"/>
+          <text x="740" y="55" text-anchor="middle" fill="#67e8f9" font-family="DM Mono" font-size="8.5" font-weight="600">GAID / IDFA</text>
+          <text x="740" y="68" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">4f3a2b1c-...99cd</text>
+          <text x="740" y="78" text-anchor="middle" fill="#f59e0b" font-family="DM Mono" font-size="6.5">DEVICE · MEDIUM</text>
+        </g>
+
+        <g>
+          <ellipse cx="740" cy="160" rx="70" ry="28" fill="#0d1627" stroke="#00d4ff" stroke-width="1.5"/>
+          <text x="740" y="155" text-anchor="middle" fill="#67e8f9" font-family="DM Mono" font-size="8.5" font-weight="600">CRM ID</text>
+          <text x="740" y="168" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">SF_CONTACT_00X9</text>
+          <text x="740" y="178" text-anchor="middle" fill="#10b981" font-family="DM Mono" font-size="6.5">DETERMINISTIC · HIGH</text>
+        </g>
+
+        <g>
+          <ellipse cx="740" cy="260" rx="70" ry="28" fill="#0d1627" stroke="#00d4ff" stroke-width="1.5"/>
+          <text x="740" y="255" text-anchor="middle" fill="#67e8f9" font-family="DM Mono" font-size="8.5" font-weight="600">COOKIE / FPC</text>
+          <text x="740" y="268" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">_ga=2.123...789</text>
+          <text x="740" y="278" text-anchor="middle" fill="#f43f5e" font-family="DM Mono" font-size="6.5">PROBABILISTIC · LOW</text>
+        </g>
+
+        <g>
+          <ellipse cx="450" cy="320" rx="70" ry="22" fill="#0d1627" stroke="#f59e0b" stroke-width="1.5"/>
+          <text x="450" y="315" text-anchor="middle" fill="#fbbf24" font-family="DM Mono" font-size="8.5" font-weight="600">HASHED POSTCODE</text>
+          <text x="450" y="328" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">PROBABILISTIC · LOW</text>
+        </g>
+
+        <!-- Connecting lines -->
+        <line x1="230" y1="70" x2="395" y2="145" stroke="#8b5cf6" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#aid)" opacity=".6"/>
+        <line x1="230" y1="160" x2="395" y2="170" stroke="#8b5cf6" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#aid)" opacity=".6"/>
+        <line x1="230" y1="255" x2="395" y2="195" stroke="#8b5cf6" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#aid)" opacity=".6"/>
+        <line x1="505" y1="145" x2="670" y2="70" stroke="#00d4ff" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#aid)" opacity=".6"/>
+        <line x1="505" y1="170" x2="670" y2="160" stroke="#00d4ff" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#aid)" opacity=".6"/>
+        <line x1="505" y1="195" x2="670" y2="250" stroke="#00d4ff" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#aid)" opacity=".6"/>
+        <line x1="450" y1="230" x2="450" y2="298" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#aid)" opacity=".5"/>
+
+        <!-- Animated traversal dots -->
+        <circle r="3.5" fill="#a78bfa" opacity=".8">
+          <animateMotion dur="3s" repeatCount="indefinite" path="M230,70 Q310,110 395,145"/>
+        </circle>
+        <circle r="3.5" fill="#00d4ff" opacity=".8">
+          <animateMotion dur="2.5s" repeatCount="indefinite" begin=".8s" path="M505,170 Q590,165 670,160"/>
+        </circle>
+        <circle r="3.5" fill="#f59e0b" opacity=".8">
+          <animateMotion dur="2s" repeatCount="indefinite" begin="1.5s" path="M450,230 L450,298"/>
+        </circle>
+
+        <!-- Confidence legend -->
+        <rect x="10" y="10" width="120" height="60" rx="5" fill="rgba(13,22,39,0.8)" stroke="#1a2d4a" stroke-width="1"/>
+        <text x="20" y="27" fill="#94a3b8" font-family="DM Mono" font-size="7" font-weight="600">CONFIDENCE TIERS</text>
+        <circle cx="22" cy="38" r="4" fill="#10b981"/>
+        <text x="30" y="42" fill="#64748b" font-family="DM Mono" font-size="7">HIGH — Deterministic</text>
+        <circle cx="22" cy="52" r="4" fill="#f59e0b"/>
+        <text x="30" y="56" fill="#64748b" font-family="DM Mono" font-size="7">MEDIUM — Device ID</text>
+        <circle cx="22" cy="66" r="4" fill="#f43f5e"/>
+        <text x="30" y="70" fill="#64748b" font-family="DM Mono" font-size="7">LOW — Probabilistic</text>
+      </svg>
+    </div>
+  </div>
+
+  <div id="identity-collision" class="inner-panel">
+    <div class="grid-2">
+      <div>
+        <h3 style="font-family:'Orbitron',monospace;font-size:.95rem;color:var(--rose);margin-bottom:1rem">Collision Scenarios</h3>
+        <table class="data-table">
+          <thead><tr><th>Collision Type</th><th>Trigger</th><th>Resolution</th></tr></thead>
+          <tbody>
+            <tr><td>Shared Device</td><td>Same GAID, 2+ email logins within 2hrs</td><td><span class="pill pill-amber">SPLIT</span> into separate profiles; GAID marked shared</td></tr>
+            <tr><td>Merged Households</td><td>Same postcode + loyalty_id collision</td><td><span class="pill pill-cyan">PARENT/CHILD</span> household graph created</td></tr>
+            <tr><td>Data Conflict</td><td>BQ and CRM disagree on email</td><td><span class="pill pill-green">PRIORITY RULE</span> CRM > offline > web (configurable)</td></tr>
+            <tr><td>Ghost Profile</td><td>Cookie profile never matched deterministically</td><td><span class="pill pill-amber">QUARANTINE</span> after 90 days inactivity</td></tr>
+            <tr><td>ID Theft Signal</td><td>Same email, 5+ different devices in 1hr</td><td><span class="pill pill-rose">FREEZE</span> + alert + manual review queue</td></tr>
+            <tr><td>Consent Mismatch</td><td>Profile A consents, Profile B (same person) opts out</td><td><span class="pill pill-rose">OPT-OUT WINS</span> always — merged profile inherits lowest consent</td></tr>
+            <tr><td>Late Arriving Offline</td><td>Offline event arrives 7 days after online session</td><td><span class="pill pill-green">RETROACTIVE MERGE</span> re-process historical audiences</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <h3 style="font-family:'Orbitron',monospace;font-size:.95rem;color:var(--cyan);margin-bottom:1rem">Resolution Decision Tree</h3>
+        <div class="arch-svg-wrap" style="padding:1rem">
+          <svg viewBox="0 0 440 320" xmlns="http://www.w3.org/2000/svg" style="width:100%">
+            <defs><marker id="atree" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#00d4ff" opacity=".7"/></marker></defs>
+            <rect x="150" y="10" width="140" height="35" rx="5" fill="#0d1627" stroke="#00d4ff" stroke-width="1.5"/>
+            <text x="220" y="26" text-anchor="middle" fill="#00d4ff" font-family="DM Mono" font-size="8.5" font-weight="600">NEW EVENT ARRIVES</text>
+            <text x="220" y="38" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">with identity signals</text>
+
+            <line x1="220" y1="45" x2="220" y2="75" stroke="#00d4ff" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#atree)"/>
+            <rect x="130" y="75" width="180" height="30" rx="5" fill="#0d1627" stroke="#8b5cf6" stroke-width="1"/>
+            <text x="220" y="91" text-anchor="middle" fill="#a78bfa" font-family="DM Mono" font-size="8" font-weight="600">Deterministic Match?</text>
+            <text x="220" y="101" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">email · phone · loyalty_id</text>
+
+            <line x1="130" y1="90" x2="70" y2="140" stroke="#10b981" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#atree)"/>
+            <text x="95" y="120" fill="#10b981" font-family="DM Mono" font-size="7.5">YES</text>
+            <rect x="10" y="140" width="120" height="35" rx="5" fill="#0d1627" stroke="#10b981" stroke-width="1.5"/>
+            <text x="70" y="157" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="8" font-weight="600">MERGE</text>
+            <text x="70" y="168" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">Update Golden Record</text>
+
+            <line x1="310" y1="90" x2="370" y2="140" stroke="#f43f5e" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#atree)"/>
+            <text x="345" y="120" fill="#f43f5e" font-family="DM Mono" font-size="7.5">NO</text>
+            <rect x="310" y="140" width="120" height="35" rx="5" fill="#0d1627" stroke="#8b5cf6" stroke-width="1"/>
+            <text x="370" y="157" text-anchor="middle" fill="#a78bfa" font-family="DM Mono" font-size="8" font-weight="600">Probabilistic?</text>
+            <text x="370" y="168" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">device · postcode · behaviour</text>
+
+            <line x1="70" y1="175" x2="70" y2="210" stroke="#00d4ff" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#atree)"/>
+            <rect x="10" y="210" width="120" height="45" rx="5" fill="#0d1627" stroke="#f43f5e" stroke-width="1.5"/>
+            <text x="70" y="227" text-anchor="middle" fill="#fb7185" font-family="DM Mono" font-size="8" font-weight="600">COLLISION CHECK</text>
+            <text x="70" y="238" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">Shared device?</text>
+            <text x="70" y="248" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">Consent conflict?</text>
+
+            <line x1="310" y1="175" x2="310" y2="210" stroke="#f59e0b" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#atree)"/>
+            <rect x="250" y="210" width="120" height="35" rx="5" fill="#0d1627" stroke="#f59e0b" stroke-width="1.5"/>
+            <text x="310" y="227" text-anchor="middle" fill="#fbbf24" font-family="DM Mono" font-size="8" font-weight="600">PROBABILISTIC LINK</text>
+            <text x="310" y="238" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">match_confidence=LOW</text>
+
+            <line x1="70" y1="255" x2="70" y2="285" stroke="#10b981" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#atree)"/>
+            <rect x="10" y="285" width="120" height="25" rx="5" fill="#0d1627" stroke="#10b981" stroke-width="1"/>
+            <text x="70" y="300" text-anchor="middle" fill="#34d399" font-family="DM Mono" font-size="8">RESOLVE + MERGE</text>
+
+            <line x1="310" y1="245" x2="310" y2="285" stroke="#64748b" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#atree)"/>
+            <rect x="250" y="285" width="120" height="25" rx="5" fill="#0d1627" stroke="#64748b" stroke-width="1"/>
+            <text x="310" y="300" text-anchor="middle" fill="#94a3b8" font-family="DM Mono" font-size="8">ANONYMOUS PROFILE</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="identity-rollback" class="inner-panel">
+    <div class="alert alert-info" style="margin-bottom:1.5rem">ℹ️ Every merge, split, or collision resolution action writes an immutable snapshot to <code>cdp.merge_audit_log</code>. The rollback system reads this log to reconstruct any prior profile state — point-in-time recovery to within 1 second of any event.</div>
+    <div class="grid-2">
+      <div>
+        <h3 style="font-family:'Orbitron',monospace;font-size:.9rem;color:var(--amber);margin-bottom:1rem">Rollback Architecture</h3>
+        <div class="timeline">
+          <div class="tl-item">
+            <div class="tl-title">Snapshot-on-Write</div>
+            <div class="tl-body">Before every merge/split, the current profile state is serialised to <code>cdp.profile_snapshots</code> (BQ + GCS backup). This is the rollback source of truth — not a diff, a full copy.</div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-title">Audit Log Replay</div>
+            <div class="tl-body">The merge audit log is append-only and immutable (Cloud Storage WORM bucket). Any sequence of merge events can be replayed or reversed chronologically using the <code>rollback_identity</code> Cloud Function.</div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-title">Fallback Triggers</div>
+            <div class="tl-body">Automatic rollback triggers: fraud_freeze event (auto-reverts last 3 merges), False Positive match score detected (&lt;0.65 on review), DSR-linked merge (must undo before deletion), manual override via admin UI.</div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-title">Downstream Re-sync</div>
+            <div class="tl-body">After rollback, all connected destinations (Google Ads, Meta, moEngage) receive a <code>delete_user</code> + <code>re-add</code> signal with the corrected profile. Audiences are refreshed within the next scheduled export window (max 4hrs).</div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-title">Split Rollback</div>
+            <div class="tl-body">If a "shared device" split was incorrect (e.g., same person using two browsers), the two child profiles can be re-merged using the original parent snapshot, restoring all event history and audience memberships.</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p class="card-title" style="margin-bottom:.8rem">🔁 Rollback Cloud Function</p>
+        <div class="code-block" style="font-size:.67rem">
+<span class="c"># rollback_identity.py — Cloud Function</span>
+<span class="k">from</span> google.cloud <span class="k">import</span> bigquery, firestore
+
+<span class="k">def</span> <span class="n">rollback_identity</span>(request):
+    data   = request.get_json()
+    uid    = data[<span class="s">'uid'</span>]
+    target = data.get(<span class="s">'rollback_to_ts'</span>)  <span class="c"># ISO timestamp</span>
+    reason = data[<span class="s">'reason'</span>]  <span class="c"># fraud|false_pos|dsr|manual</span>
+
+    bq = bigquery.Client()
+    db = firestore.Client()
+
+    <span class="c"># 1. Fetch snapshot closest to target timestamp</span>
+    query = f<span class="s">"""
+      SELECT snapshot_json, snapshot_ts
+      FROM cdp.profile_snapshots
+      WHERE uid = '{uid}'
+        AND snapshot_ts <= '{target}'
+      ORDER BY snapshot_ts DESC
+      LIMIT 1
+    """</span>
+    rows = list(bq.query(query).result())
+    <span class="k">if not</span> rows:
+        <span class="k">return</span> {<span class="s">'error'</span>: <span class="s">'no snapshot found'</span>}, <span class="v">404</span>
+
+    snapshot = rows[<span class="v">0</span>][<span class="s">'snapshot_json'</span>]
+
+    <span class="c"># 2. Restore profile in Firestore</span>
+    db.collection(<span class="s">'profiles'</span>).document(uid).set(
+        snapshot, merge=<span class="k">False</span>)  <span class="c"># full overwrite</span>
+
+    <span class="c"># 3. Mark downstream for re-sync</span>
+    bq.insert_rows_json(<span class="s">'cdp.rollback_queue'</span>, [{
+        <span class="s">'uid'</span>:        uid,
+        <span class="s">'reason'</span>:     reason,
+        <span class="s">'rolled_back_to'</span>: target,
+        <span class="s">'queued_at'</span>:  <span class="n">datetime</span>.utcnow().isoformat(),
+        <span class="s">'destinations'</span>: [
+            <span class="s">'google_ads'</span>,<span class="s">'meta_capi'</span>,
+            <span class="s">'moengage'</span>,<span class="s">'amplitude'</span>
+        ],
+        <span class="s">'status'</span>: <span class="s">'PENDING'</span>
+    }])
+
+    <span class="c"># 4. Log audit entry</span>
+    bq.insert_rows_json(<span class="s">'cdp.merge_audit_log'</span>, [{
+        <span class="s">'audit_id'</span>:    str(uuid.uuid4()),
+        <span class="s">'action_type'</span>: <span class="s">'ROLLBACK'</span>,
+        <span class="s">'source_uid'</span>:  uid,
+        <span class="s">'resolution'</span>:  reason,
+        <span class="s">'event_ts'</span>:    <span class="n">datetime</span>.utcnow().isoformat()
+    }])
+
+    <span class="k">return</span> {<span class="s">'status'</span>: <span class="s">'rolled_back'</span>, <span class="s">'uid'</span>: uid}, <span class="v">200</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <h3 style="font-family:'Orbitron',monospace;font-size:.85rem;color:var(--cyan);margin-bottom:1rem">Rollback Scenario Matrix</h3>
+    <table class="data-table">
+      <thead><tr><th>Scenario</th><th>Trigger</th><th>Rollback Method</th><th>Scope</th><th>SLA</th><th>Auto?</th></tr></thead>
+      <tbody>
+        <tr><td>Wrong Merge — False Positive</td><td>match_confidence &lt; 0.65 on review</td><td>Restore last snapshot; split UIDs back</td><td>Both merged profiles</td><td>1 hr</td><td><span class="pill pill-amber">Semi-auto</span></td></tr>
+        <tr><td>Fraud Freeze Triggered</td><td>5+ devices in 1hr anomaly</td><td>Auto-revert last 3 merge operations</td><td>Target profile only</td><td>5 min</td><td><span class="pill pill-green">Auto</span></td></tr>
+        <tr><td>Incorrect Shared Device Split</td><td>Manual admin review</td><td>Re-merge child UIDs from parent snapshot</td><td>Child profiles + events</td><td>4 hrs</td><td><span class="pill pill-rose">Manual</span></td></tr>
+        <tr><td>Consent Override Error</td><td>Opt-out cascade applied to wrong UID</td><td>Restore consent flags from snapshot; re-add to audiences</td><td>Consent fields only</td><td>30 min</td><td><span class="pill pill-green">Auto</span></td></tr>
+        <tr><td>DSR Merge Pre-Deletion</td><td>DSR received for a merged profile</td><td>Rollback merge to identify original UID scope; then delete only that scope</td><td>Pre-merge UIDs</td><td>72 hrs</td><td><span class="pill pill-amber">Semi-auto</span></td></tr>
+        <tr><td>Retroactive Merge Wrong Offline Event</td><td>Source system corrects offline transaction</td><td>Remove enrichment; undo BQ computed event; re-run match</td><td>Enriched events only</td><td>24 hrs</td><td><span class="pill pill-rose">Manual</span></td></tr>
+        <tr><td>Schema Version Mismatch</td><td>New schema breaks profile shape</td><td>Revert identity_map schema; restore from BQ snapshot</td><td>Entire profile table</td><td>2 hrs</td><td><span class="pill pill-amber">Semi-auto</span></td></tr>
+      </tbody>
+    </table>
+    <div class="alert alert-danger" style="margin-top:1rem">🚨 <strong>Critical Constraint:</strong> Rollback does NOT undo data already delivered to ad platforms. Once an email hash has been uploaded to Google Ads Customer Match or Meta Custom Audiences, the downstream platform must be notified separately via its own removal API. The CDP rollback system queues these removal calls automatically, but propagation takes 6–48hrs depending on the destination.</div>
+  </div>
+
+  <div id="identity-schema" class="inner-panel">
+    <div class="grid-2">
+      <div class="code-block">
+        <span class="code-tag">BigQuery: cdp.identity_map</span>
+<span class="c">-- Identity Graph Table Schema</span>
+<span class="k">CREATE TABLE</span> cdp.identity_map (
+  uid               STRING    <span class="k">NOT NULL</span>,  <span class="c">-- synthetic UUID</span>
+  created_at        TIMESTAMP <span class="k">NOT NULL</span>,
+  updated_at        TIMESTAMP <span class="k">NOT NULL</span>,
+
+  <span class="c">-- Deterministic keys</span>
+  email_sha256      STRING,
+  phone_sha256      STRING,
+  loyalty_id        STRING,
+  crm_id            STRING,
+  subscriber_id     STRING,
+
+  <span class="c">-- Device identifiers</span>
+  gaid              STRING,    <span class="c">-- Android Ad ID</span>
+  idfa              STRING,    <span class="c">-- iOS Ad ID</span>
+  idfv              STRING,    <span class="c">-- iOS Vendor ID</span>
+  web_cookie_id     STRING,    <span class="c">-- First-party cookie</span>
+
+  <span class="c">-- Match metadata</span>
+  match_confidence  STRING,    <span class="c">-- HIGH|MEDIUM|LOW</span>
+  match_method      STRING,    <span class="c">-- DETERMINISTIC|PROBABILISTIC</span>
+  matched_keys      ARRAY&lt;STRING&gt;,
+  is_household      BOOL <span class="k">DEFAULT</span> <span class="k">false</span>,
+  parent_uid        STRING,    <span class="c">-- for household graphs</span>
+  is_frozen         BOOL <span class="k">DEFAULT</span> <span class="k">false</span>, <span class="c">-- fraud flag</span>
+
+  <span class="c">-- Consent (lowest wins on merge)</span>
+  consent_marketing BOOL <span class="k">NOT NULL</span>,
+  consent_analytics BOOL <span class="k">NOT NULL</span>,
+  consent_updated   TIMESTAMP
+)
+<span class="k">PARTITION BY</span> DATE(created_at)
+<span class="k">CLUSTER BY</span> email_sha256, loyalty_id;
+      </div>
+      <div class="code-block">
+        <span class="code-tag">BigQuery: cdp.merge_audit_log</span>
+<span class="c">-- Every merge/split action recorded immutably</span>
+<span class="k">CREATE TABLE</span> cdp.merge_audit_log (
+  audit_id          STRING    <span class="k">NOT NULL</span>,
+  event_ts          TIMESTAMP <span class="k">NOT NULL</span>,
+  action_type       STRING,  
+  <span class="c">-- MERGE | SPLIT | FREEZE | QUARANTINE</span>
+  <span class="c">-- CONSENT_OVERRIDE | RETROACTIVE_MERGE</span>
+
+  source_uid        STRING,   <span class="c">-- before state</span>
+  target_uid        STRING,   <span class="c">-- after state</span>
+  triggering_event  STRING,   <span class="c">-- event_id that caused merge</span>
+  match_keys_used   ARRAY&lt;STRING&gt;,
+  confidence_score  FLOAT64,
+  
+  <span class="c">-- Collision resolution</span>
+  collision_type    STRING,   <span class="c">-- SHARED_DEVICE | CONSENT_MISMATCH ...</span>
+  resolution        STRING,   <span class="c">-- what rule was applied</span>
+  consent_before    JSON,
+  consent_after     JSON,
+  
+  <span class="c">-- Accountability</span>
+  triggered_by      STRING,   <span class="c">-- service account / job name</span>
+  reviewable        BOOL,     <span class="c">-- requires human sign-off?</span>
+  reviewed_by       STRING
+)
+<span class="k">PARTITION BY</span> DATE(event_ts)
+<span class="k">OPTIONS</span>(require_partition_filter=<span class="k">true</span>);
+      </div>
+    </div>
+  </div>
+
+  <div id="identity-limits" class="inner-panel">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title" style="color:var(--rose)">⚠️ Known Limitations</div>
+        <div class="timeline">
+          <div class="tl-item"><div class="tl-title">Apple ATT / iOS 14.5+</div><div class="tl-body">IDFA is opt-in only. Expect &lt;30% IDFA availability on iOS. Fall back to IDFV + email for cross-device matching.</div></div>
+          <div class="tl-item"><div class="tl-title">Third-Party Cookie Deprecation</div><div class="tl-body">Chrome GDPR-3PC removed. Web probabilistic matching degrades significantly. First-party data strategy is mandatory.</div></div>
+          <div class="tl-item"><div class="tl-title">Hashed Email Match Rates</div><div class="tl-body">Cross-platform SHA-256 match requires SAME normalisation (lowercase, trimmed). Even minor formatting differences cause match failures — 5–15% loss common.</div></div>
+          <div class="tl-item"><div class="tl-title">Shared Family Devices</div><div class="tl-body">Single GAID/IDFA used by multiple family members is a structural problem. No perfect solution — use household flagging and exclude from personalisation targeting.</div></div>
+          <div class="tl-item"><div class="tl-title">BQ Streaming Insert Delay</div><div class="tl-body">BQ streaming inserts are not immediately queryable — 30–90 second delay. Identity merge jobs reading from BQ must account for this lag.</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="color:var(--emerald)">✅ Best Practices</div>
+        <div class="timeline">
+          <div class="tl-item"><div class="tl-title">Normalise Before Hashing</div><div class="tl-body">Always lowercase + strip whitespace before SHA-256. Store normalisation function in Cloud Functions (single source of truth).</div></div>
+          <div class="tl-item"><div class="tl-title">Never Store Raw PII in BQ Alongside Ad Identifiers</div><div class="tl-body">PII (email, phone) and GAID/IDFA must not coexist in the same column grouping — use column-level encryption with Cloud KMS.</div></div>
+          <div class="tl-item"><div class="tl-title">Opt-Out Cascade</div><div class="tl-body">When a profile opts out, cascade deletion/suppression to ALL linked device IDs and ALL downstream activation destinations simultaneously.</div></div>
+          <div class="tl-item"><div class="tl-title">Confidence Score Routing</div><div class="tl-body">Only route DETERMINISTIC matches to regulatory-sensitive destinations (Google Ads Customer Match). Use PROBABILISTIC only for internal analytics.</div></div>
+          <div class="tl-item"><div class="tl-title">Immutable Audit Log</div><div class="tl-body">Every merge event logged to <code>merge_audit_log</code> with require_partition_filter=true. Never update or delete — WORM pattern for regulatory compliance.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ EVENT SCHEMA ══════════════════════════════════ -->
+<section id="schema" class="section">
+  <div class="sec-header">
+    <span class="sec-tag">§ 05 — Schema & Governance</span>
+    <h1 class="sec-title">Event Schema, Deduplication & <span style="color:var(--amber)">Governance Rules</span></h1>
+    <p class="sec-desc">The complete event contract — from JSON schema validation and deduplication logic to blocking rules, access control, and egress throttle configuration.</p>
+  </div>
+
+  <div class="inner-tabs">
+    <div class="inner-tab active" onclick="switchInner('schema','json')">JSON Schema</div>
+    <div class="inner-tab" onclick="switchInner('schema','dedup')">Deduplication</div>
+    <div class="inner-tab" onclick="switchInner('schema','blocking')">Blocking Rules</div>
+    <div class="inner-tab" onclick="switchInner('schema','access')">Access Control</div>
+    <div class="inner-tab" onclick="switchInner('schema','egress')">Egress Throttle</div>
+  </div>
+
+  <div id="schema-json" class="inner-panel active">
+    <div class="grid-2">
+      <div>
+        <p class="card-title" style="margin-bottom:.8rem">📋 Master CDP Event JSON Schema</p>
+        <div class="code-block" style="font-size:.67rem">
+{
+  <span class="n">"$schema"</span>: <span class="s">"https://json-schema.org/draft/2020-12"</span>,
+  <span class="n">"$id"</span>: <span class="s">"cdp-event-v3.json"</span>,
+  <span class="n">"title"</span>: <span class="s">"CDP Universal Event"</span>,
+  <span class="n">"type"</span>: <span class="s">"object"</span>,
+  <span class="n">"required"</span>: [
+    <span class="s">"event_id"</span>, <span class="s">"event_type"</span>, <span class="s">"event_ts"</span>,
+    <span class="s">"source"</span>, <span class="s">"consent"</span>
+  ],
+  <span class="n">"properties"</span>: {
+    <span class="n">"event_id"</span>: {
+      <span class="n">"type"</span>: <span class="s">"string"</span>,
+      <span class="n">"pattern"</span>: <span class="s">"^evt_[a-z]{3,10}_\\d{8}_\\d{7}$"</span>,
+      <span class="n">"description"</span>: <span class="s">"Globally unique. Used for dedup."</span>
+    },
+    <span class="n">"event_type"</span>: {
+      <span class="n">"type"</span>: <span class="s">"string"</span>,
+      <span class="n">"enum"</span>: [
+        <span class="s">"page_view"</span>, <span class="s">"add_to_cart"</span>, <span class="s">"purchase"</span>,
+        <span class="s">"purchase_offline"</span>, <span class="s">"identify"</span>, <span class="s">"sign_up"</span>,
+        <span class="s">"login"</span>, <span class="s">"app_open"</span>, <span class="s">"push_click"</span>,
+        <span class="s">"call_centre_contact"</span>, <span class="s">"store_visit"</span>,
+        <span class="s">"email_open"</span>, <span class="s">"email_click"</span>, <span class="s">"refund"</span>,
+        <span class="s">"product_view"</span>, <span class="s">"search"</span>, <span class="s">"custom"</span>
+      ]
+    },
+    <span class="n">"event_ts"</span>: {
+      <span class="n">"type"</span>: <span class="s">"string"</span>,
+      <span class="n">"format"</span>: <span class="s">"date-time"</span>,
+      <span class="n">"description"</span>: <span class="s">"ISO 8601 UTC. Client time only."</span>
+    },
+    <span class="n">"source"</span>: {
+      <span class="n">"type"</span>: <span class="s">"object"</span>,
+      <span class="n">"required"</span>: [<span class="s">"channel"</span>, <span class="s">"platform"</span>],
+      <span class="n">"properties"</span>: {
+        <span class="n">"channel"</span>: { <span class="n">"enum"</span>: [<span class="s">"web"</span>,<span class="s">"ios"</span>,<span class="s">"android"</span>,<span class="s">"offline"</span>,<span class="s">"api"</span>,<span class="s">"email"</span>] },
+        <span class="n">"platform"</span>: { <span class="n">"type"</span>: <span class="s">"string"</span> },
+        <span class="n">"store_id"</span>: { <span class="n">"type"</span>: <span class="s">"string"</span> }
+      }
+    },
+    <span class="n">"identity"</span>: {
+      <span class="n">"type"</span>: <span class="s">"object"</span>,
+      <span class="n">"minProperties"</span>: <span class="v">1</span>,
+      <span class="n">"properties"</span>: {
+        <span class="n">"uid"</span>:          { <span class="n">"type"</span>: <span class="s">"string"</span> },
+        <span class="n">"email_sha256"</span>: { <span class="n">"type"</span>: <span class="s">"string"</span>, <span class="n">"pattern"</span>: <span class="s">"^[a-f0-9]{64}$"</span> },
+        <span class="n">"phone_sha256"</span>: { <span class="n">"type"</span>: <span class="s">"string"</span>, <span class="n">"pattern"</span>: <span class="s">"^[a-f0-9]{64}$"</span> },
+        <span class="n">"gaid"</span>:         { <span class="n">"type"</span>: <span class="s">"string"</span>, <span class="n">"format"</span>: <span class="s">"uuid"</span> },
+        <span class="n">"loyalty_id"</span>:  { <span class="n">"type"</span>: <span class="s">"string"</span> }
+      }
+    },
+    <span class="n">"consent"</span>: {
+      <span class="n">"type"</span>: <span class="s">"object"</span>,
+      <span class="n">"required"</span>: [<span class="s">"analytics"</span>, <span class="s">"marketing"</span>, <span class="s">"version"</span>],
+      <span class="n">"properties"</span>: {
+        <span class="n">"analytics"</span>:  { <span class="n">"type"</span>: <span class="s">"boolean"</span> },
+        <span class="n">"marketing"</span>:  { <span class="n">"type"</span>: <span class="s">"boolean"</span> },
+        <span class="n">"version"</span>:    { <span class="n">"type"</span>: <span class="s">"string"</span>, <span class="n">"description"</span>: <span class="s">"TCF consent string v2"</span> },
+        <span class="n">"updated_at"</span>: { <span class="n">"type"</span>: <span class="s">"string"</span>, <span class="n">"format"</span>: <span class="s">"date-time"</span> }
+      }
+    },
+    <span class="n">"properties"</span>: {
+      <span class="n">"type"</span>: <span class="s">"object"</span>,
+      <span class="n">"additionalProperties"</span>: <span class="k">true</span>,
+      <span class="n">"maxProperties"</span>: <span class="v">50</span>
+    },
+    <span class="n">"revenue"</span>: {
+      <span class="n">"type"</span>: <span class="s">"object"</span>,
+      <span class="n">"properties"</span>: {
+        <span class="n">"amount"</span>:   { <span class="n">"type"</span>: <span class="s">"number"</span>, <span class="n">"minimum"</span>: <span class="v">0</span> },
+        <span class="n">"currency"</span>: { <span class="n">"type"</span>: <span class="s">"string"</span>, <span class="n">"pattern"</span>: <span class="s">"^[A-Z]{3}$"</span> },
+        <span class="n">"tax"</span>:      { <span class="n">"type"</span>: <span class="s">"number"</span> }
+      }
+    }
+  },
+  <span class="n">"additionalProperties"</span>: <span class="k">false</span>
+}
+        </div>
+      </div>
+      <div>
+        <p class="card-title" style="margin-bottom:.8rem">✅ Valid Event Example</p>
+        <div class="code-block" style="font-size:.67rem">
+{
+  <span class="n">"event_id"</span>:    <span class="s">"evt_web_20240317_0091234"</span>,
+  <span class="n">"event_type"</span>:  <span class="s">"purchase"</span>,
+  <span class="n">"event_ts"</span>:    <span class="s">"2024-03-17T14:23:11.432Z"</span>,
+  <span class="n">"source"</span>: {
+    <span class="n">"channel"</span>:  <span class="s">"web"</span>,
+    <span class="n">"platform"</span>: <span class="s">"brand.co.uk"</span>
+  },
+  <span class="n">"identity"</span>: {
+    <span class="n">"uid"</span>:          <span class="s">"usr_8f2a9c_unified"</span>,
+    <span class="n">"email_sha256"</span>: <span class="s">"a3d9c...f84e2"</span>,
+    <span class="n">"gaid"</span>:         <span class="s">"4f3a2b1c-9d8e-..."</span>
+  },
+  <span class="n">"consent"</span>: {
+    <span class="n">"analytics"</span>:  <span class="k">true</span>,
+    <span class="n">"marketing"</span>:  <span class="k">true</span>,
+    <span class="n">"version"</span>:    <span class="s">"CPdqkAAPdqkAAMA..."</span>,
+    <span class="n">"updated_at"</span>: <span class="s">"2024-03-17T13:00:00Z"</span>
+  },
+  <span class="n">"revenue"</span>: {
+    <span class="n">"amount"</span>:   <span class="v">149.99</span>,
+    <span class="n">"currency"</span>: <span class="s">"GBP"</span>,
+    <span class="n">"tax"</span>:      <span class="v">24.99</span>
+  },
+  <span class="n">"properties"</span>: {
+    <span class="n">"product_ids"</span>: [<span class="s">"PROD_SHOE_NK_001"</span>],
+    <span class="n">"category"</span>:    <span class="s">"footwear"</span>,
+    <span class="n">"quantity"</span>:    <span class="v">1</span>,
+    <span class="n">"coupon"</span>:      <span class="s">"SPRING20"</span>
+  }
+}
+        </div>
+        <div class="alert alert-warn" style="margin-top:.8rem">⚠️ Schema is enforced by Cloud Function before Pub/Sub publish. Invalid events are routed to <code>cdp-schema-violations</code> topic — never dropped silently. Dead-letter queue retains for 7 days.</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="schema-dedup" class="inner-panel">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">🔄 Deduplication Strategy</div>
+        <div class="timeline">
+          <div class="tl-item">
+            <div class="tl-title">Layer 1 — Pub/Sub Message Dedup</div>
+            <div class="tl-body">Pub/Sub exactly-once delivery within 10 min window using <code>message_id</code>. Protects against SDK double-sends on network retry.</div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-title">Layer 2 — Dataflow Window Dedup</div>
+            <div class="tl-body">Apache Beam Fixed Window (5 min) + <code>GroupByKey(event_id)</code>. Collapses duplicates arriving within the same processing window.</div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-title">Layer 3 — BigQuery Merge Dedup</div>
+            <div class="tl-body">Hourly scheduled MERGE statement using <code>event_id</code> as the unique key. Ensures idempotency even if Dataflow delivers twice.</div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-title">Layer 4 — Destination-Level Dedup</div>
+            <div class="tl-body">Meta: <code>event_id</code> field. Amplitude: <code>insert_id</code>. Google Ads: upload job idempotency key. Each destination handles its own window.</div>
+          </div>
+        </div>
+      </div>
+      <div class="code-block">
+        <span class="code-tag">BigQuery: Hourly Dedup Merge</span>
+<span class="c">-- Runs hourly via Cloud Composer</span>
+<span class="k">MERGE</span> cdp.events_clean t
+<span class="k">USING</span> (
+  <span class="k">SELECT</span>
+    event_id,
+    <span class="k">ARRAY_AGG</span>(e <span class="k">ORDER BY</span> _PARTITIONTIME <span class="k">DESC</span>
+      <span class="k">LIMIT</span> <span class="v">1</span>)[<span class="k">OFFSET</span>(<span class="v">0</span>)] <span class="k">AS</span> latest
+  <span class="k">FROM</span> cdp.events_raw e
+  <span class="k">WHERE</span> _PARTITIONTIME >= <span class="k">TIMESTAMP_SUB</span>(<span class="k">CURRENT_TIMESTAMP</span>(), 
+    <span class="k">INTERVAL</span> <span class="v">2</span> <span class="k">HOUR</span>)
+  <span class="k">GROUP BY</span> event_id
+) src
+<span class="k">ON</span> t.event_id = src.latest.event_id
+<span class="k">WHEN NOT MATCHED THEN</span>
+  <span class="k">INSERT ROW</span>
+<span class="k">WHEN MATCHED AND</span>
+  src.latest._PARTITIONTIME > t._PARTITIONTIME <span class="k">THEN</span>
+  <span class="k">UPDATE SET</span> enriched = src.latest.enriched;
+
+<span class="c">-- Dedup stats tracked in monitoring table</span>
+<span class="k">INSERT INTO</span> cdp.dedup_stats
+<span class="k">VALUES</span> (
+  <span class="k">CURRENT_TIMESTAMP</span>(),
+  @@row_count,
+  (raw_count - clean_count) <span class="k">AS</span> duplicates_removed
+);
+      </div>
+    </div>
+    <div class="alert alert-info" style="margin-top:1rem">ℹ️ <strong>Expected Duplicate Rate:</strong> Web SDK: 2–5% (network retry). Mobile SDK: 1–3%. Offline batch: &lt;1% (controlled upload). Call Centre: 0.5% (manual entry errors). Total dedup savings: typically 3–6% of raw event volume.</div>
+  </div>
+
+  <div id="schema-blocking" class="inner-panel">
+    <table class="data-table">
+      <thead><tr><th>Rule Name</th><th>Trigger Condition</th><th>Action</th><th>Scope</th><th>Reversible</th></tr></thead>
+      <tbody>
+        <tr><td>opt_out_block</td><td>consent.marketing = false</td><td>Block all marketing egress</td><td>Profile + all linked devices</td><td><span class="pill pill-green">Yes</span></td></tr>
+        <tr><td>dsr_suppression</td><td>DSR request received</td><td>Immediately suppress from all audiences; queue deletion</td><td>All destinations + BQ</td><td><span class="pill pill-rose">No</span></td></tr>
+        <tr><td>fraud_freeze</td><td>5+ device IDs in 1hr OR velocity anomaly</td><td>Freeze profile; alert security team</td><td>Profile-level</td><td><span class="pill pill-amber">Manual review</span></td></tr>
+        <tr><td>minor_block</td><td>age_verified = false OR age < 18</td><td>Block all personalised advertising egress</td><td>All marketing platforms</td><td><span class="pill pill-green">Yes (on verification)</span></td></tr>
+        <tr><td>pii_in_event_block</td><td>DLP API detects raw PII in event body</td><td>Quarantine event; alert data team</td><td>Single event</td><td><span class="pill pill-amber">After remediation</span></td></tr>
+        <tr><td>schema_violation_block</td><td>JSON schema validation fails</td><td>Route to DLQ; never ingest to main stream</td><td>Single event</td><td><span class="pill pill-green">Fix + resubmit</span></td></tr>
+        <tr><td>geo_restriction</td><td>user_country = sanctioned list</td><td>Block all processing; alert compliance</td><td>Profile + events</td><td><span class="pill pill-rose">Compliance only</span></td></tr>
+        <tr><td>egress_rate_exceeded</td><td>Connector exceeds configured RPS</td><td>Queue event; apply exponential backoff</td><td>Connector-level</td><td><span class="pill pill-green">Auto-resolves</span></td></tr>
+        <tr><td>consent_mode_downgrade</td><td>Consent signal degrades (e.g., CMP update)</td><td>Retroactively remove from active audiences</td><td>Profile + downstream</td><td><span class="pill pill-green">On re-consent</span></td></tr>
+      </tbody>
+    </table>
+    <div class="alert alert-danger" style="margin-top:1rem">🚨 <strong>Critical:</strong> All blocking rules are enforced at the Egress Gate (Cloud Run service) BEFORE data leaves GCP. Blocking at the destination level (e.g., excluding from an audience in Google Ads) is NOT sufficient — data would still have left your environment. Block at source.</div>
+  </div>
+
+  <div id="schema-access" class="inner-panel">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">🔐 IAM Role Matrix</div>
+        <table class="data-table" style="font-size:.7rem">
+          <thead><tr><th>Role</th><th>BQ Access</th><th>Firestore</th><th>Pub/Sub</th><th>Secrets</th></tr></thead>
+          <tbody>
+            <tr><td>cdp-ingestion-sa</td><td>Writer (raw only)</td><td>Writer</td><td>Publisher</td><td>None</td></tr>
+            <tr><td>cdp-dataflow-sa</td><td>Reader + Writer (clean)</td><td>Reader</td><td>Sub</td><td>Viewer</td></tr>
+            <tr><td>cdp-connector-sa</td><td>Reader (audiences)</td><td>Reader</td><td>None</td><td>Accessor</td></tr>
+            <tr><td>cdp-analyst-sa</td><td>Reader (no PII tables)</td><td>None</td><td>None</td><td>None</td></tr>
+            <tr><td>cdp-admin-sa</td><td>Full (audit only)</td><td>Full</td><td>Full</td><td>Full</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div class="card-title">🔒 Column-Level Security on PII Tables</div>
+        <div class="code-block" style="font-size:.68rem">
+<span class="c">-- Policy tag applied to PII columns</span>
+<span class="k">CREATE</span> policy_tag <span class="s">"pii_email"</span>
+  taxonomy: <span class="s">"cdp-taxonomy"</span>;
+
+<span class="c">-- Only roles with Fine-Grained Reader</span>
+<span class="c">-- can see unmasked values</span>
+<span class="k">ALTER TABLE</span> cdp.identity_map
+  <span class="k">ALTER COLUMN</span> email_sha256
+  <span class="k">SET DATA GOVERNANCE</span>
+    policy_tag: <span class="s">"pii_email"</span>;
+
+<span class="c">-- Default masked view for analysts:</span>
+<span class="c">-- email_sha256 → "****sha256****"</span>
+
+<span class="c">-- VPC Service Controls perimeter</span>
+<span class="c">-- prevents BQ data leaving org boundary</span>
+gcloud access-context-manager perimeters
+  create cdp-perimeter
+  --resources=projects/cdp-prod
+  --restricted-services=bigquery.googleapis.com
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="schema-egress" class="inner-panel">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">⚡ Egress Throttle Architecture</div>
+        <div class="timeline">
+          <div class="tl-item"><div class="tl-title">Token Bucket Algorithm</div><div class="tl-body">Each connector has a token bucket with configurable fill rate. Requests consume tokens; empty bucket → queue with exponential backoff (cap: 32s).</div></div>
+          <div class="tl-item"><div class="tl-title">Circuit Breaker</div><div class="tl-body">If a destination returns 5xx for &gt;30 consecutive requests, the circuit opens for 60s. All events during open circuit go to DLQ for replay.</div></div>
+          <div class="tl-item"><div class="tl-title">Priority Queuing</div><div class="tl-body">DSR suppressions: P0 (immediate). Real-time triggers (abandon cart, push): P1. Batch audiences: P2. Historical backfill: P3.</div></div>
+          <div class="tl-item"><div class="tl-title">Dead Letter Queue</div><div class="tl-body">Failed events go to <code>cdp-egress-dlq-{destination}</code> Pub/Sub topic. Replayed after human review or automated retry rules.</div></div>
+        </div>
+      </div>
+      <div class="code-block">
+        <span class="code-tag">Cloud Run: egress-throttle.py</span>
+<span class="k">from</span> ratelimit <span class="k">import</span> limits, sleep_and_retry
+<span class="k">from</span> circuitbreaker <span class="k">import</span> circuit
+<span class="k">import</span> google.cloud.pubsub_v1 <span class="k">as</span> pubsub
+
+LIMITS = {
+  <span class="s">"google_ads"</span>:   { <span class="s">"rps"</span>: <span class="v">10</span>,  <span class="s">"dlq"</span>: <span class="s">"cdp-dlq-gads"</span> },
+  <span class="s">"meta_capi"</span>:    { <span class="s">"rps"</span>: <span class="v">200</span>, <span class="s">"dlq"</span>: <span class="s">"cdp-dlq-meta"</span> },
+  <span class="s">"moengage"</span>:     { <span class="s">"rps"</span>: <span class="v">500</span>, <span class="s">"dlq"</span>: <span class="s">"cdp-dlq-moe"</span> },
+  <span class="s">"appsflyer"</span>:    { <span class="s">"rps"</span>: <span class="v">100</span>, <span class="s">"dlq"</span>: <span class="s">"cdp-dlq-af"</span> },
+}
+
+@sleep_and_retry
+@limits(calls=LIMITS[dest][<span class="s">"rps"</span>], period=<span class="v">1</span>)
+@circuit(failure_threshold=<span class="v">30</span>, recovery_timeout=<span class="v">60</span>)
+<span class="k">def</span> <span class="n">send_to_destination</span>(dest, payload):
+  <span class="k">try</span>:
+    response = connector_map[dest].send(payload)
+    log_egress_audit(dest, payload[<span class="s">"event_id"</span>],
+                     <span class="s">"SUCCESS"</span>, response.status_code)
+    <span class="k">return</span> response
+  <span class="k">except</span> <span class="k">Exception</span> <span class="k">as</span> e:
+    route_to_dlq(LIMITS[dest][<span class="s">"dlq"</span>], payload, str(e))
+    <span class="k">raise</span>
+
+<span class="k">def</span> <span class="n">log_egress_audit</span>(dest, event_id, status, code):
+  bq.insert_rows_json(<span class="s">"cdp.egress_audit_log"</span>, [{
+    <span class="s">"destination"</span>: dest,
+    <span class="s">"event_id"</span>:    event_id,
+    <span class="s">"status"</span>:      status,
+    <span class="s">"http_code"</span>:   code,
+    <span class="s">"logged_at"</span>:   <span class="n">datetime</span>.utcnow().isoformat()
+  }])
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ PREREQUISITES ══════════════════════════════════ -->
+<section id="prereqs" class="section">
+  <div class="sec-header">
+    <span class="sec-tag">§ 06 — Prerequisites & Constraints</span>
+    <h1 class="sec-title">Prerequisites, <span style="color:var(--rose)">Limitations</span> & Compliance</h1>
+    <p class="sec-desc">Everything you need in place before day 1 — GCP configuration, team capabilities, data quality thresholds, and regulatory prerequisites.</p>
+  </div>
+
+  <div class="grid-2">
+    <div>
+      <h3 style="font-family:'Orbitron',monospace;font-size:.95rem;color:var(--cyan);margin-bottom:1rem">✅ Technical Prerequisites</h3>
+      <table class="data-table">
+        <thead><tr><th>Requirement</th><th>Minimum Spec</th><th>Status Check</th></tr></thead>
+        <tbody>
+          <tr><td>GCP Project</td><td>Org-level Billing Account + VPC</td><td><span class="pill pill-cyan">Required</span></td></tr>
+          <tr><td>BigQuery Dataset</td><td>Multi-region EU, CMEK enabled</td><td><span class="pill pill-cyan">Required</span></td></tr>
+          <tr><td>Cloud Pub/Sub</td><td>3 topics minimum (raw, clean, DLQ)</td><td><span class="pill pill-cyan">Required</span></td></tr>
+          <tr><td>Firestore</td><td>Native mode, eu-west2 region</td><td><span class="pill pill-cyan">Required</span></td></tr>
+          <tr><td>Cloud KMS</td><td>Key ring for CMEK + PII column encryption</td><td><span class="pill pill-cyan">Required</span></td></tr>
+          <tr><td>VPC Service Controls</td><td>Perimeter around BQ + Firestore</td><td><span class="pill pill-amber">Strongly Rec</span></td></tr>
+          <tr><td>Secret Manager</td><td>All API keys (never env vars)</td><td><span class="pill pill-cyan">Required</span></td></tr>
+          <tr><td>Cloud Composer (Airflow)</td><td>v2.x for BQ job orchestration</td><td><span class="pill pill-cyan">Required</span></td></tr>
+          <tr><td>Data Catalog</td><td>Schema registry + PII tagging</td><td><span class="pill pill-amber">Strongly Rec</span></td></tr>
+          <tr><td>GCP Budget Alerts</td><td>Set at 80% + 100% of monthly limit</td><td><span class="pill pill-green">Best Practice</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <h3 style="font-family:'Orbitron',monospace;font-size:.95rem;color:var(--amber);margin-bottom:1rem">⚖️ Legal & Compliance Prerequisites</h3>
+      <table class="data-table">
+        <thead><tr><th>Requirement</th><th>Detail</th><th>Owner</th></tr></thead>
+        <tbody>
+          <tr><td>GDPR Lawful Basis</td><td>Consent (Art.6a) or Legitimate Interest documented per purpose</td><td>DPO</td></tr>
+          <tr><td>PECR Compliance</td><td>UK: soft opt-in for email; hard opt-in for cookies</td><td>Legal</td></tr>
+          <tr><td>TCF 2.2 CMP</td><td>IAB-registered CMP integrated with consent signal flow</td><td>MarTech</td></tr>
+          <tr><td>Data Processing Agreement</td><td>DPA with GCP, each connector vendor, each data supplier</td><td>Legal</td></tr>
+          <tr><td>ROPA (Records of Processing)</td><td>Every data flow documented in Article 30 register</td><td>DPO</td></tr>
+          <tr><td>DSR Process</td><td>72hr response SLA; tested quarterly</td><td>Engineering</td></tr>
+          <tr><td>EEA Data Transfer Mechanism</td><td>SCCs or Binding Corporate Rules for non-EU destinations</td><td>Legal</td></tr>
+          <tr><td>Retention Policy</td><td>Raw events: 90 days; Profiles: active+24mo; Audit: 7yr</td><td>Data Governance</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <h3 style="font-family:'Orbitron',monospace;font-size:.95rem;color:var(--rose);margin-bottom:1rem">⚠️ Known Platform Limitations</h3>
+
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-title" style="color:var(--rose)">BigQuery Limitations</div>
+      <div class="card-body">
+        <div class="timeline">
+          <div class="tl-item"><div class="tl-title">Streaming Insert Delay</div><div class="tl-body">30–90 sec before streaming inserts are queryable. Do not use BQ streaming for real-time lookup — use Firestore.</div></div>
+          <div class="tl-item"><div class="tl-title">Storage Costs at Scale</div><div class="tl-body">At 10B events/day, active storage costs ~£140/month. Enable long-term storage automatically after 90 days (60% cheaper).</div></div>
+          <div class="tl-item"><div class="tl-title">DML Row Limit</div><div class="tl-body">MERGE/UPDATE statements have a 90-day partition requirement. Always partition event tables by ingestion date.</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="color:var(--rose)">Identity Graph Limitations</div>
+      <div class="card-body">
+        <div class="timeline">
+          <div class="tl-item"><div class="tl-title">iOS ATT — IDFA Availability</div><div class="tl-body">&lt;30% opt-in rate. SKAN 4.0 coarse conversion values only for non-consented users.</div></div>
+          <div class="tl-item"><div class="tl-title">Hash Normalisation Drift</div><div class="tl-body">If email normalisation differs between SDK, CRM, and ad platform — match rate drops 5–15%. Central normalisation function mandatory.</div></div>
+          <div class="tl-item"><div class="tl-title">Cross-Device False Positives</div><div class="tl-body">Probabilistic matching: 8–12% false positive rate in shared device environments. Threshold-gate: only merge if score ≥ 0.80.</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="color:var(--rose)">Connector Limitations</div>
+      <div class="card-body">
+        <div class="timeline">
+          <div class="tl-item"><div class="tl-title">Google Ads Match Rate</div><div class="tl-body">Customer Match typically 40–60% match rate on hashed email. Requires 1K minimum users per list.</div></div>
+          <div class="tl-item"><div class="tl-title">Meta CAPI Latency</div><div class="tl-body">Server-side events processed with 5–15 min delay vs browser events. May affect real-time bidding and optimisation signals.</div></div>
+          <div class="tl-item"><div class="tl-title">AppsFlyer DSR Constraint</div><div class="tl-body">Your CDP cannot delete data from AppsFlyer's servers. You must call AF's GDPR API. This is AF's limitation, not a CDP design issue.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <h3 style="font-family:'Orbitron',monospace;font-size:.95rem;color:var(--violet);margin-bottom:1rem">💰 Cost Model (Indicative)</h3>
+  <div class="grid-4">
+    <div class="metric-box"><div class="val">£0.016</div><div class="lbl">Per GB/mo BQ Storage</div></div>
+    <div class="metric-box"><div class="val">£4.50</div><div class="lbl">Per TB BQ Query</div></div>
+    <div class="metric-box"><div class="val">£0.04</div><div class="lbl">Per 1M Pub/Sub msgs</div></div>
+    <div class="metric-box"><div class="val">£0.06</div><div class="lbl">Per 1M Firestore reads</div></div>
+  </div>
+  <div class="alert alert-info" style="margin-top:1rem">ℹ️ At 1M daily active profiles and 50M events/day: estimated GCP bill ~£3,200–£5,800/month depending on query patterns. Enable BQ slot commitments (flex or annual) above 10TB/day query volume for 40% cost reduction. Use Firestore TTL to expire session data after 30 days.</div>
+</section>
+
+<!-- ══════════════════════════════════ USE CASES ══════════════════════════════════ -->
+<section id="usecases" class="section">
+  <div class="sec-header">
+    <span class="sec-tag">§ 07 — Use Cases</span>
+    <h1 class="sec-title">Data <span style="color:var(--emerald)">Use Cases</span> & Activation Playbooks</h1>
+    <p class="sec-desc">Concrete, end-to-end activation playbooks showing exactly which data, which BigQuery queries, which connectors, and which consent requirements apply — per use case.</p>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:2rem">
+    <div class="card" style="border-color:rgba(0,212,255,.3)">
+      <div class="card-title" style="font-size:.9rem">🎯 UC-01: High-Value Lookalike Expansion</div>
+      <div class="card-body">
+        <div style="margin-bottom:.8rem">
+          <span class="pill pill-cyan">Google Ads</span> <span class="pill pill-green">Meta</span> <span class="pill pill-amber">Offline + Online</span>
+        </div>
+        <div class="timeline">
+          <div class="tl-item"><div class="tl-title">Signal</div><div class="tl-body">Users with ltv_percentile ≥ 90 AND offline_purchase_count ≥ 3 AND consent.marketing = true</div></div>
+          <div class="tl-item"><div class="tl-title">BQ Query</div><div class="tl-body"><code>SELECT email_sha256 FROM cdp.unified_profiles WHERE ltv_percentile >= 90 AND offline_signals.purchase_count >= 3 AND consent_marketing = true</code></div></div>
+          <div class="tl-item"><div class="tl-title">Activation</div><div class="tl-body">Export to Google Ads Customer Match + Meta Custom Audience as seed for 2% Lookalike. Refresh weekly.</div></div>
+          <div class="tl-item"><div class="tl-title">Expected Size</div><div class="tl-body">~2-5% of total profiles. Min 1,000 required for Google Ads, 100 for Meta.</div></div>
+          <div class="tl-item"><div class="tl-title">Consent Required</div><div class="tl-body">Explicit marketing consent + TCF v2 purpose 1, 3, 4.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="border-color:rgba(245,158,11,.3)">
+      <div class="card-title" style="font-size:.9rem">🛒 UC-02: Abandoned Cart Recovery — Cross-Channel</div>
+      <div class="card-body">
+        <div style="margin-bottom:.8rem">
+          <span class="pill pill-cyan">moEngage</span> <span class="pill pill-green">Meta CAPI</span> <span class="pill pill-amber">Real-time</span>
+        </div>
+        <div class="timeline">
+          <div class="tl-item"><div class="tl-title">Signal</div><div class="tl-body">add_to_cart event fired, NO purchase event within 60 min from same uid</div></div>
+          <div class="tl-item"><div class="tl-title">Logic</div><div class="tl-body">Dataflow tumbling window (60 min). If no matching purchase, trigger Cloud Function to push to moEngage and Meta CAPI.</div></div>
+          <div class="tl-item"><div class="tl-title">Sequence</div><div class="tl-body">T+60min: Push notification (moEngage). T+2hrs: Email reminder. T+24hrs: Paid retargeting (Meta).</div></div>
+          <div class="tl-item"><div class="tl-title">Suppression</div><div class="tl-body">If purchase happens during recovery sequence, immediately suppress remaining touches via blocking rule.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="border-color:rgba(139,92,246,.3)">
+      <div class="card-title" style="font-size:.9rem">📊 UC-03: Offline-to-Online Attribution</div>
+      <div class="card-body">
+        <div style="margin-bottom:.8rem">
+          <span class="pill pill-cyan">SA360</span> <span class="pill pill-green">Google Ads</span> <span class="pill pill-amber">Measurement</span>
+        </div>
+        <div class="timeline">
+          <div class="tl-item"><div class="tl-title">Signal</div><div class="tl-body">Offline purchase within 30 days of a paid search click (gclid captured at web session)</div></div>
+          <div class="tl-item"><div class="tl-title">BQ Join</div><div class="tl-body">JOIN web_sessions (gclid) with offline_events (email_sha256) via identity_map. Attribute revenue to campaign.</div></div>
+          <div class="tl-item"><div class="tl-title">Activation</div><div class="tl-body">Send offline conversion via Google Ads Offline Conversion Import (gclid + revenue). SA360 Floodlight enhanced conversions.</div></div>
+          <div class="tl-item"><div class="tl-title">Impact</div><div class="tl-body">Typical 15–35% uplift in measured ROAS when offline conversions correctly attributed.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="border-color:rgba(16,185,129,.3)">
+      <div class="card-title" style="font-size:.9rem">🔄 UC-04: Churn Prevention — Predictive Cohort</div>
+      <div class="card-body">
+        <div style="margin-bottom:.8rem">
+          <span class="pill pill-cyan">moEngage</span> <span class="pill pill-green">Amplitude</span> <span class="pill pill-amber">ML-Driven</span>
+        </div>
+        <div class="timeline">
+          <div class="tl-item"><div class="tl-title">Signal</div><div class="tl-body">Vertex AI model score: churn_risk ≥ 0.70. No purchase or app_open in last 28 days. Previously high engagement.</div></div>
+          <div class="tl-item"><div class="tl-title">Model</div><div class="tl-body">BigQuery ML BQML LOGISTIC_REG trained on 12-month event history. Weekly retraining via Cloud Composer.</div></div>
+          <div class="tl-item"><div class="tl-title">Activation</div><div class="tl-body">Personalised push notification with dynamic discount (tier-based: 10% for gold, 20% for platinum). In-app message on next open.</div></div>
+          <div class="tl-item"><div class="tl-title">Measurement</div><div class="tl-body">Holdout group (10%) tracked via Amplitude experiment. Report via Amplitude chart + BQ analysis.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="border-color:rgba(244,63,94,.3)">
+      <div class="card-title" style="font-size:.9rem">📱 UC-05: Mobile Attribution Clean Room</div>
+      <div class="card-body">
+        <div style="margin-bottom:.8rem">
+          <span class="pill pill-cyan">AppsFlyer</span> <span class="pill pill-green">Amazon AMC</span> <span class="pill pill-amber">SKAN 4.0</span>
+        </div>
+        <div class="timeline">
+          <div class="tl-item"><div class="tl-title">Signal</div><div class="tl-body">AppsFlyer Data Locker → GCS → BQ external table. SKAN postbacks → Cloud Function → BQ.</div></div>
+          <div class="tl-item"><div class="tl-title">Logic</div><div class="tl-body">Join AF attribution data with CDP profiles (using IDFV + hashed email where ATT consented). Compute campaign-level incremental LTV.</div></div>
+          <div class="tl-item"><div class="tl-title">Clean Room</div><div class="tl-body">Amazon Marketing Cloud SQL query: join AMC impressions with CDP email-matched converters. Overlap analysis without ID sharing.</div></div>
+          <div class="tl-item"><div class="tl-title">Limitation</div><div class="tl-body">SKAN values are coarse (0–63). Probabilistic revenue attribution only for opted-out iOS users.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="border-color:rgba(245,158,11,.3)">
+      <div class="card-title" style="font-size:.9rem">🔍 UC-06: Search Bid Optimisation via Audience</div>
+      <div class="card-body">
+        <div style="margin-bottom:.8rem">
+          <span class="pill pill-cyan">SA360</span> <span class="pill pill-green">Google Ads</span> <span class="pill pill-amber">RLSA</span>
+        </div>
+        <div class="timeline">
+          <div class="tl-item"><div class="tl-title">Signal</div><div class="tl-body">Audiences: high_value (ltv ≥ £500), recent_purchaser (purchase ≤ 30d), lapsed_buyer (90-180d no purchase).</div></div>
+          <div class="tl-item"><div class="tl-title">Bid Logic</div><div class="tl-body">high_value: +40% bid adjustment. recent_purchaser: -20% (reduce waste). lapsed_buyer: +25% (re-engage intent).</div></div>
+          <div class="tl-item"><div class="tl-title">Activation</div><div class="tl-body">BQ audience export → Google Ads RLSA list. SA360 bulk bid modifier upload via API. Refreshed daily.</div></div>
+          <div class="tl-item"><div class="tl-title">Consent</div><div class="tl-body">Requires Consent Mode v2. Signals passed via gtag with ad_personalization and analytics_storage consent.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI Summary Table -->
+  <div class="divider"></div>
+  <h3 style="font-family:'Orbitron',monospace;font-size:.95rem;color:var(--violet);margin-bottom:1rem">📡 Paid Channel & Owned Channel Activation</h3>
+  <div class="grid-2" style="margin-bottom:2rem">
+    <div class="card" style="border-color:rgba(245,158,11,.35)">
+      <div class="card-title" style="font-size:.9rem">💎 UC-07: Value-Based Bidding (VBB)</div>
+      <div class="card-body">
+        <div style="margin-bottom:.8rem">
+          <span class="pill pill-cyan">Google Ads</span> <span class="pill pill-green">SA360</span> <span class="pill pill-amber">DV360</span>
+        </div>
+        <div class="timeline">
+          <div class="tl-item"><div class="tl-title">Concept</div><div class="tl-body">Instead of bidding for conversion volume, bid proportionally to the predicted lifetime value of each user — letting Smart Bidding maximise ROAS against value, not just click count.</div></div>
+          <div class="tl-item"><div class="tl-title">Signal</div><div class="tl-body">Vertex AI LTV model produces <code>predicted_90d_ltv</code> per uid. This score is passed as conversion value at the time of the conversion event (not a flat £1).</div></div>
+          <div class="tl-item"><div class="tl-title">BQ Logic</div>
+            <div class="tl-body"><code style="font-size:.65rem">SELECT uid, gclid, ROUND(predicted_90d_ltv * ltv_weight_factor, 2) AS conv_value FROM cdp.scored_profiles WHERE predicted_90d_ltv > 0 AND consent_marketing = true</code></div>
+          </div>
+          <div class="tl-item"><div class="tl-title">Activation</div><div class="tl-body">Cloud Function sends gclid + conv_value via <strong>Google Ads Offline Conversion Import API</strong>. SA360 Enhanced Conversions handle the web path; server-side via CAPI for Meta (event_value field).</div></div>
+          <div class="tl-item"><div class="tl-title">Tiers</div><div class="tl-body">Platinum LTV (&gt;£1,000): value=1.0x. Gold (£500–£999): value=0.6x. Silver (£100–£499): value=0.3x. Suppress below £100 threshold — don't waste Smart Bidding budget on low-value signals.</div></div>
+          <div class="tl-item"><div class="tl-title">Consent</div><div class="tl-body">Requires Google Consent Mode v2 <code>ad_user_data=GRANTED</code>. Modelled conversions kick in for non-consented users — do not suppress the conversion ping, just omit PII.</div></div>
+          <div class="tl-item"><div class="tl-title">Limitation</div><div class="tl-body">Smart Bidding needs min 30 value-weighted conversions/month to stabilise. Cold start: use flat conversion value for first 30 days, then switch to LTV-weighted.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="border-color:rgba(244,63,94,.35)">
+      <div class="card-title" style="font-size:.9rem">🚫 UC-08: Suppression Across Paid Channels</div>
+      <div class="card-body">
+        <div style="margin-bottom:.8rem">
+          <span class="pill pill-rose">Google Ads</span> <span class="pill pill-rose">Meta</span> <span class="pill pill-rose">SA360</span> <span class="pill pill-rose">Amazon DSP</span>
+        </div>
+        <div class="timeline">
+          <div class="tl-item"><div class="tl-title">Purpose</div><div class="tl-body">Stop spending money advertising to people who have already converted, opted out, been flagged as fraud, or are in a loyalty hold. Suppression is the highest-ROI use case in any CDP.</div></div>
+          <div class="tl-item"><div class="tl-title">Suppression Segments</div>
+            <div class="tl-body">
+              <span class="pill pill-rose">recent_converter</span> — purchase ≤ 14 days<br>
+              <span class="pill pill-rose">opted_out</span> — consent.marketing = false<br>
+              <span class="pill pill-rose">active_crm</span> — open support ticket / complaint<br>
+              <span class="pill pill-rose">loyalty_platinum</span> — no need to bid up, they're already retained<br>
+              <span class="pill pill-rose">dsr_requested</span> — immediate, always P0<br>
+              <span class="pill pill-rose">fraud_flagged</span> — frozen profiles
+            </div>
+          </div>
+          <div class="tl-item"><div class="tl-title">BQ Query</div>
+            <div class="tl-body"><code style="font-size:.65rem">SELECT email_sha256 FROM cdp.unified_profiles WHERE (last_purchase_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 14 DAY) OR consent_marketing = false OR is_frozen = true OR dsr_active = true) AND consent_analytics = true</code></div>
+          </div>
+          <div class="tl-item"><div class="tl-title">Activation</div><div class="tl-body"><strong>Google Ads:</strong> Upload as "exclusion" Customer Match list. <strong>Meta:</strong> Custom Audience with "Exclude" toggle in campaign. <strong>SA360:</strong> Negative audience modifier via API. <strong>DV360:</strong> Exclusion list at insertion order level. <strong>Amazon DSP:</strong> Suppression list upload via S3.</div></div>
+          <div class="tl-item"><div class="tl-title">Refresh Cadence</div><div class="tl-body">DSR suppressions: real-time (&lt;15min via P0 egress path). Opted-out: 4-hourly sync. Post-purchase: daily. All others: daily. Always-on — never let suppression lists stale beyond 24hrs.</div></div>
+          <div class="tl-item"><div class="tl-title">Expected Saving</div><div class="tl-body">Typical 8–18% reduction in wasted paid media spend. At £500K/month budget, that's £40K–£90K saved monthly.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="border-color:rgba(16,185,129,.35)" style="grid-column:1/-1">
+      <div class="card-title" style="font-size:.9rem">📬 UC-09: Owned Channel Remarketing — Email · SMS · Push</div>
+      <div class="card-body">
+        <div style="margin-bottom:.8rem">
+          <span class="pill pill-green">moEngage</span> <span class="pill pill-green">Email</span> <span class="pill pill-green">SMS</span> <span class="pill pill-green">Push</span> <span class="pill pill-green">In-App</span> <span class="pill pill-green">WhatsApp</span>
+        </div>
+        <div class="grid-2" style="margin-top:.8rem">
+          <div class="timeline">
+            <div class="tl-item"><div class="tl-title">Concept</div><div class="tl-body">Use CDP audience segments to power personalised, sequenced owned-channel remarketing — triggered from BigQuery computed signals or real-time Pub/Sub events into moEngage via Cloud Run bridge.</div></div>
+            <div class="tl-item"><div class="tl-title">Segment Examples</div>
+              <div class="tl-body">
+                <span class="chip">browse_abandoner_24h</span> <span class="chip">post_purchase_7d</span><br>
+                <span class="chip">winback_90d</span> <span class="chip">loyalty_tier_upgraded</span><br>
+                <span class="chip">price_drop_wishlist</span> <span class="chip">low_stock_viewed</span><br>
+                <span class="chip">birthday_minus7d</span> <span class="chip">anniversary_offer</span>
+              </div>
+            </div>
+            <div class="tl-item"><div class="tl-title">Channel Priority (Sequencing)</div>
+              <div class="tl-body">
+                <strong>T+0:</strong> In-App Message (highest open rate, zero cost)<br>
+                <strong>T+1hr:</strong> Push Notification (if app installed + opted in)<br>
+                <strong>T+4hr:</strong> Email (universal fallback; consent: soft opt-in UK)<br>
+                <strong>T+24hr:</strong> SMS (highest urgency signals only; hard opt-in)<br>
+                <strong>T+48hr:</strong> WhatsApp (if WhatsApp Business API connected)<br>
+                <em style="color:var(--muted);font-size:.7rem">Stop sequence on any conversion event</em>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="timeline">
+              <div class="tl-item"><div class="tl-title">BQ → moEngage Bridge</div>
+                <div class="tl-body"><code style="font-size:.64rem">SELECT uid, email_sha256, push_token, phone_sha256, segment_name, personalisation_payload FROM cdp.audience_export WHERE segment_name IN ('browse_abandoner_24h','winback_90d') AND consent_marketing = true AND moEngage_opted_in = true</code></div>
+              </div>
+              <div class="tl-item"><div class="tl-title">Personalisation Payload</div>
+                <div class="tl-body">Each record includes <code>personalisation_payload</code> JSON: last browsed product, price, stock level, recommended alternatives (Vertex AI), loyalty points balance, first name — injected into moEngage template via Liquid tags.</div>
+              </div>
+              <div class="tl-item"><div class="tl-title">Suppression from Owned Channels</div>
+                <div class="tl-body">Always check: <code>consent_email=true</code>, <code>consent_sms=true</code>, <code>push_opted_in=true</code> per channel individually — one consent does NOT cover all channels. Double-opt-in for SMS required under PECR.</div>
+              </div>
+              <div class="tl-item"><div class="tl-title">Frequency Capping</div>
+                <div class="tl-body">Global cap: max 3 marketing messages/7 days per uid across all owned channels combined. Tracked in Firestore <code>profiles/{uid}/msg_frequency</code>. Cap enforced by Cloud Function before any moEngage API call.</div>
+              </div>
+              <div class="tl-item"><div class="tl-title">Expected Metrics</div>
+                <div class="tl-body">Email open rate: 28–42% (vs 18% batch avg). Push click rate: 12–22%. SMS response: 8–15%. In-app engagement: 35–55%. Revenue/send (personalised): 2.4–4.1x vs generic broadcast.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI Summary Table -->
+  <div class="divider"></div>
+  <h3 style="font-family:'Orbitron',monospace;font-size:.95rem;color:var(--cyan);margin-bottom:1rem">📈 Expected Business Outcomes</h3>
+  <table class="data-table">
+    <thead><tr><th>Use Case</th><th>KPI</th><th>Typical Uplift</th><th>Time to Value</th><th>Risk</th></tr></thead>
+    <tbody>
+      <tr><td>Lookalike Expansion</td><td>CPM efficiency, ROAS</td><td>+20–40% ROAS</td><td>4–8 weeks</td><td><span class="pill pill-green">Low</span></td></tr>
+      <tr><td>Abandoned Cart Recovery</td><td>Recovery rate, incremental revenue</td><td>12–18% cart recovery</td><td>2–4 weeks</td><td><span class="pill pill-green">Low</span></td></tr>
+      <tr><td>Offline Attribution</td><td>True ROAS, measured conversions</td><td>+15–35% measured ROAS</td><td>6–12 weeks</td><td><span class="pill pill-amber">Medium</span></td></tr>
+      <tr><td>Churn Prevention</td><td>Retention rate, LTV</td><td>8–15% churn reduction</td><td>8–16 weeks</td><td><span class="pill pill-amber">Medium</span></td></tr>
+      <tr><td>Mobile Attribution Clean Room</td><td>CPI accuracy, incremental installs</td><td>+25% attribution accuracy</td><td>10–20 weeks</td><td><span class="pill pill-rose">High</span></td></tr>
+      <tr><td>Value-Based Bidding</td><td>ROAS, CPA efficiency vs LTV</td><td>+25–45% ROAS vs flat-bid</td><td>6–10 weeks</td><td><span class="pill pill-amber">Medium</span></td></tr>
+      <tr><td>Suppression — Paid</td><td>Wasted spend reduction</td><td>8–18% budget saving</td><td>1–2 weeks</td><td><span class="pill pill-green">Low</span></td></tr>
+      <tr><td>Owned Channel Remarketing</td><td>Revenue/send, unsubscribe rate</td><td>2.4–4.1x revenue vs broadcast</td><td>3–6 weeks</td><td><span class="pill pill-green">Low</span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ══════════════════════════════════ OPS DASHBOARD ══════════════════════════════════ -->
+<section id="opsdash" class="section">
+  <div class="sec-header">
+    <span class="sec-tag">§ 08 — Operations</span>
+    <h1 class="sec-title">Ops Dashboard — <span style="color:var(--amber)">Live CDP Health</span></h1>
+    <p class="sec-desc">Real-time error rates, pipeline trend lines, egress health, and profile lookup — all driven from BigQuery monitoring tables and Firestore live reads. Refresh every 1.2 seconds.</p>
+  </div>
+
+  <!-- KPI Row -->
+  <div class="dash-grid" id="dash-kpi-row">
+    <div class="dash-kpi ok">
+      <div class="kpi-label">Ingestion Error Rate</div>
+      <div class="kpi-val" id="d-err-rate">0.0%</div>
+      <div class="kpi-delta up" id="d-err-delta">↓ improving</div>
+    </div>
+    <div class="dash-kpi info">
+      <div class="kpi-label">Events / sec (live)</div>
+      <div class="kpi-val" id="d-eps">12,481</div>
+      <div class="kpi-delta flat" id="d-eps-delta">→ stable</div>
+    </div>
+    <div class="dash-kpi ok">
+      <div class="kpi-label">ID Match Rate</div>
+      <div class="kpi-val" id="d-match">71.3%</div>
+      <div class="kpi-delta up" id="d-match-delta">↑ +0.2% vs yesterday</div>
+    </div>
+    <div class="dash-kpi ok">
+      <div class="kpi-label">Egress Success</div>
+      <div class="kpi-val" id="d-egress">99.2%</div>
+      <div class="kpi-delta up" id="d-egress-delta">↑ all connectors healthy</div>
+    </div>
+    <div class="dash-kpi warn">
+      <div class="kpi-label">DLQ Depth</div>
+      <div class="kpi-val" id="d-dlq">247</div>
+      <div class="kpi-delta down" id="d-dlq-delta">↑ Meta CAPI backpressure</div>
+    </div>
+    <div class="dash-kpi info">
+      <div class="kpi-label">Profile Merges Today</div>
+      <div class="kpi-val" id="d-merges">8,934</div>
+      <div class="kpi-delta flat">→ within normal range</div>
+    </div>
+    <div class="dash-kpi ok">
+      <div class="kpi-label">Blocking Events (24h)</div>
+      <div class="kpi-val" id="d-blocks">1,892</div>
+      <div class="kpi-delta up" id="d-blocks-delta">↓ vs 2,110 yesterday</div>
+    </div>
+    <div class="dash-kpi ok">
+      <div class="kpi-label">DSR Queue</div>
+      <div class="kpi-val" id="d-dsr">3</div>
+      <div class="kpi-delta up">↓ all within SLA</div>
+    </div>
+  </div>
+
+  <!-- Profile Search -->
+  <div class="search-box">
+    <span style="font-size:.7rem;color:var(--muted);white-space:nowrap">🔍 Profile Lookup</span>
+    <input class="search-input" id="profile-search-input" type="text" placeholder="Enter UID · email_sha256 · loyalty_id · GAID · phone_sha256 · CRM ID…" />
+    <button class="search-btn" onclick="lookupProfile()">Search</button>
+    <button class="search-btn" style="background:var(--card);color:var(--muted2);border:1px solid var(--border)" onclick="loadDemoProfile()">Load Demo</button>
+  </div>
+  <div class="search-result" id="profile-result">
+    <div class="search-result-header">
+      <div class="profile-avatar">👤</div>
+      <div>
+        <div class="profile-uid" id="pr-uid">usr_8f2a9c_unified</div>
+        <div class="profile-meta" id="pr-meta">Created 2023-09-01 · Last seen 2024-03-17 · Match: DETERMINISTIC · HIGH</div>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:.5rem;flex-wrap:wrap" id="pr-audiences"></div>
+    </div>
+    <div class="grid-3" id="pr-grid">
+      <div>
+        <div style="font-size:.65rem;color:var(--cyan);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.6rem">Identity Keys</div>
+        <div id="pr-keys" style="font-size:.72rem;line-height:1.9;color:var(--muted2)"></div>
+      </div>
+      <div>
+        <div style="font-size:.65rem;color:var(--amber);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.6rem">Offline Signals</div>
+        <div id="pr-offline" style="font-size:.72rem;line-height:1.9;color:var(--muted2)"></div>
+      </div>
+      <div>
+        <div style="font-size:.65rem;color:var(--emerald);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.6rem">Scores & Consent</div>
+        <div id="pr-scores" style="font-size:.72rem;line-height:1.9;color:var(--muted2)"></div>
+      </div>
+    </div>
+    <div style="margin-top:1rem;display:flex;gap:.5rem;flex-wrap:wrap">
+      <button class="search-btn" style="font-size:.68rem;padding:.4rem .9rem;background:var(--rose)" onclick="triggerRollback()">⏪ Rollback Profile</button>
+      <button class="search-btn" style="font-size:.68rem;padding:.4rem .9rem;background:var(--amber);color:var(--bg)" onclick="triggerFreeze()">🔒 Freeze Profile</button>
+      <button class="search-btn" style="font-size:.68rem;padding:.4rem .9rem;background:var(--card);color:var(--muted2);border:1px solid var(--border)" onclick="viewAuditLog()">📋 View Audit Log</button>
+    </div>
+    <div id="action-feedback" style="margin-top:.7rem;display:none" class="alert alert-success"></div>
+    <div id="audit-log-block" style="margin-top:.8rem;display:none">
+      <div style="font-size:.65rem;color:var(--cyan);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.6rem">Merge Audit Log (last 5 events)</div>
+      <table class="data-table" id="audit-table" style="font-size:.68rem"></table>
+    </div>
+  </div>
+
+  <!-- Trend Charts -->
+  <div class="grid-2" style="margin-top:1.5rem">
+    <div class="trend-canvas-wrap">
+      <div class="trend-header">
+        <span class="trend-title">Event Ingestion Rate (60s window)</span>
+        <div class="trend-legend">
+          <div class="trend-legend-item"><div class="trend-legend-dot" style="background:var(--cyan)"></div>Events/sec</div>
+          <div class="trend-legend-item"><div class="trend-legend-dot" style="background:var(--rose)"></div>Errors/sec</div>
+        </div>
+      </div>
+      <canvas id="trend-ingestion" height="140"></canvas>
+    </div>
+    <div class="trend-canvas-wrap">
+      <div class="trend-header">
+        <span class="trend-title">Identity Match Rate Trend (60s)</span>
+        <div class="trend-legend">
+          <div class="trend-legend-item"><div class="trend-legend-dot" style="background:var(--emerald)"></div>Match %</div>
+          <div class="trend-legend-item"><div class="trend-legend-dot" style="background:var(--amber)"></div>Collision/sec</div>
+        </div>
+      </div>
+      <canvas id="trend-identity" height="140"></canvas>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-top:0">
+    <div class="trend-canvas-wrap">
+      <div class="trend-header">
+        <span class="trend-title">Egress Connector Health (60s)</span>
+        <div class="trend-legend">
+          <div class="trend-legend-item"><div class="trend-legend-dot" style="background:var(--emerald)"></div>Success</div>
+          <div class="trend-legend-item"><div class="trend-legend-dot" style="background:var(--amber)"></div>DLQ</div>
+        </div>
+      </div>
+      <canvas id="trend-egress" height="140"></canvas>
+    </div>
+    <div class="trend-canvas-wrap">
+      <div class="trend-header">
+        <span class="trend-title">Suppression & Blocking Events (60s)</span>
+        <div class="trend-legend">
+          <div class="trend-legend-item"><div class="trend-legend-dot" style="background:var(--rose)"></div>Blocked</div>
+          <div class="trend-legend-item"><div class="trend-legend-dot" style="background:var(--violet)"></div>DSR Actions</div>
+        </div>
+      </div>
+      <canvas id="trend-blocking" height="140"></canvas>
+    </div>
+  </div>
+
+  <!-- Error Rate Gauge + Live Error Log -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">📡 Error Rate Gauge — Ingestion Pipeline</div>
+      <div class="gauge-wrap">
+        <svg class="gauge-svg" width="140" height="90" viewBox="0 0 140 90">
+          <defs>
+            <linearGradient id="gauge-grad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#10b981"/>
+              <stop offset="50%" stop-color="#f59e0b"/>
+              <stop offset="100%" stop-color="#f43f5e"/>
+            </linearGradient>
+          </defs>
+          <!-- Track -->
+          <path d="M15,80 A55,55 0 0,1 125,80" fill="none" stroke="#1a2d4a" stroke-width="10" stroke-linecap="round"/>
+          <!-- Fill -->
+          <path id="gauge-fill" d="M15,80 A55,55 0 0,1 125,80" fill="none" stroke="url(#gauge-grad)" stroke-width="10" stroke-linecap="round" stroke-dasharray="172" stroke-dashoffset="155"/>
+          <!-- Needle -->
+          <line id="gauge-needle" x1="70" y1="80" x2="70" y2="35" stroke="#00d4ff" stroke-width="2" stroke-linecap="round" transform="rotate(-75 70 80)"/>
+          <circle cx="70" cy="80" r="4" fill="var(--cyan)"/>
+          <text x="70" y="100" text-anchor="middle" fill="#64748b" font-family="DM Mono" font-size="7">0% OK 100%</text>
+        </svg>
+        <div class="gauge-info">
+          <div class="val" id="gauge-val" style="color:var(--emerald)">0.3%</div>
+          <div class="lbl">Error Rate</div>
+          <div class="sub">
+            Schema violations: <span id="g-schema" style="color:var(--text)">0.1%</span><br>
+            Consent blocked: <span id="g-consent" style="color:var(--text)">0.15%</span><br>
+            DLQ failures: <span id="g-dlq" style="color:var(--text)">0.05%</span><br>
+            <span style="color:var(--emerald);font-size:.7rem">✅ Below 1% SLA threshold</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Error Log -->
+    <div class="card">
+      <div class="card-title">🔴 Live Error Stream</div>
+      <div class="error-log" id="error-log"></div>
+    </div>
+  </div>
+
+  <!-- Connector Status Table -->
+  <div class="divider"></div>
+  <div class="card" style="margin-top:0">
+    <div class="card-title">🔌 Connector Live Status</div>
+    <table class="data-table" id="connector-status-table">
+      <thead><tr><th>Connector</th><th>Status</th><th>Success Rate</th><th>Avg Latency</th><th>DLQ Depth</th><th>Last Send</th><th>Rate Limit</th></tr></thead>
+      <tbody id="connector-status-body"></tbody>
+    </table>
+  </div>
+</section>
+
+<footer>
+  <div style="font-family:'Orbitron',monospace;font-size:.8rem;color:var(--cyan);margin-bottom:.5rem">GCP COMPOSABLE CDP — ARCHITECTURE REFERENCE</div>
+  <div>Built for enterprise-scale customer data unification · GCP eu-west2 · GDPR / PECR compliant</div>
+  <div style="margin-top:.3rem;color:var(--border2)">Event Schema v3.0 · Identity Graph v2.1 · Last updated March 2024</div>
+</footer>
+
+<script>
+// ═══════════════ BACKGROUND CANVAS ═══════════════
+const canvas = document.getElementById('bg-canvas');
+const ctx = canvas.getContext('2d');
+let particles = [];
+let animFrame;
+
+function initCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  particles = [];
+  const count = Math.floor((canvas.width * canvas.height) / 12000);
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      r: Math.random() * 1.5 + 0.5,
+      opacity: Math.random() * 0.5 + 0.1
+    });
+  }
+}
+
+function drawCanvas() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Update and draw particles
+  particles.forEach(p => {
+    p.x += p.vx; p.y += p.vy;
+    if (p.x < 0) p.x = canvas.width;
+    if (p.x > canvas.width) p.x = 0;
+    if (p.y < 0) p.y = canvas.height;
+    if (p.y > canvas.height) p.y = 0;
+
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(0, 212, 255, ${p.opacity})`;
+    ctx.fill();
+  });
+
+  // Draw connections
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i + 1; j < particles.length; j++) {
+      const dx = particles[i].x - particles[j].x;
+      const dy = particles[i].y - particles[j].y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 120) {
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(particles[j].x, particles[j].y);
+        ctx.strokeStyle = `rgba(0, 212, 255, ${0.08 * (1 - dist / 120)})`;
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+      }
+    }
+  }
+  animFrame = requestAnimationFrame(drawCanvas);
+}
+
+initCanvas();
+drawCanvas();
+window.addEventListener('resize', () => { initCanvas(); });
+
+// ═══════════════ SECTION NAVIGATION ═══════════════
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  const tabs = document.querySelectorAll('.nav-tab');
+  const names = ['architecture','offline-online','connectors','identity','schema','prereqs','usecases','opsdash'];
+  tabs[names.indexOf(id)]?.classList.add('active');
+  if (id === 'opsdash') initDashboard();
+}
+
+// ═══════════════ INNER TABS ═══════════════
+function switchInner(section, panel) {
+  const allPanels = document.querySelectorAll(`[id^="${section}-"]`);
+  allPanels.forEach(p => p.classList.remove('active'));
+  document.getElementById(`${section}-${panel}`)?.classList.add('active');
+
+  // Update inner tab styles
+  event.target.closest('.inner-tabs')?.querySelectorAll('.inner-tab')
+    .forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+// ═══════════════ LIVE METRICS ═══════════════
+let eventsPerSec = 12480;
+let profiles = 2847293;
+let latency = 142;
+let matchRate = 71.3;
+let blocked = 1892;
+
+function updateMetrics() {
+  // Simulate live fluctuation
+  eventsPerSec += Math.floor((Math.random() - 0.5) * 200);
+  eventsPerSec = Math.max(8000, Math.min(18000, eventsPerSec));
+  profiles += Math.floor(Math.random() * 8);
+  latency += Math.floor((Math.random() - 0.5) * 12);
+  latency = Math.max(80, Math.min(280, latency));
+  matchRate += (Math.random() - 0.5) * 0.3;
+  matchRate = Math.max(68, Math.min(76, matchRate));
+  blocked += Math.floor(Math.random() * 5);
+
+  const m1 = document.getElementById('m-events');
+  const m2 = document.getElementById('m-profiles');
+  const m3 = document.getElementById('m-latency');
+  const m4 = document.getElementById('m-resolved');
+  const m5 = document.getElementById('m-blocked');
+
+  if (m1) m1.textContent = eventsPerSec.toLocaleString();
+  if (m2) m2.textContent = profiles.toLocaleString();
+  if (m3) m3.textContent = latency + 'ms';
+  if (m4) m4.textContent = matchRate.toFixed(1) + '%';
+  if (m5) m5.textContent = blocked.toLocaleString();
+}
+
+setInterval(updateMetrics, 1200);
+updateMetrics();
+
+// ═══════════════ OPS DASHBOARD ═══════════════
+let dashInited = false;
+let trendTimers = [];
+const TREND_POINTS = 60;
+
+// Trend data stores
+const trendData = {
+  eps:      Array.from({length:TREND_POINTS}, () => 12000 + Math.random()*2000),
+  errs:     Array.from({length:TREND_POINTS}, () => Math.random()*40),
+  match:    Array.from({length:TREND_POINTS}, () => 70 + Math.random()*4),
+  collide:  Array.from({length:TREND_POINTS}, () => Math.random()*8),
+  success:  Array.from({length:TREND_POINTS}, () => 98.5 + Math.random()*1.4),
+  dlq:      Array.from({length:TREND_POINTS}, () => Math.random()*15),
+  blocked:  Array.from({length:TREND_POINTS}, () => 60 + Math.random()*40),
+  dsr:      Array.from({length:TREND_POINTS}, () => Math.random()*3),
+};
+
+const CONNECTORS = [
+  {name:'Google Ads',    icon:'🔵', ok:true,  sr:99.4, lat:210, dlq:0,   last:'2s ago',  rl:'8/10 rps'},
+  {name:'Meta CAPI',     icon:'🔷', ok:true,  sr:97.8, lat:340, dlq:247, last:'4s ago',  rl:'187/200 eps'},
+  {name:'SA360',         icon:'🔴', ok:true,  sr:99.8, lat:180, dlq:0,   last:'1s ago',  rl:'3/10 rps'},
+  {name:'Amazon DSP',    icon:'🟠', ok:true,  sr:100,  lat:0,   dlq:0,   last:'2hr ago', rl:'Batch OK'},
+  {name:'moEngage',      icon:'💜', ok:true,  sr:99.1, lat:290, dlq:12,  last:'1s ago',  rl:'412/500 rps'},
+  {name:'Amplitude',     icon:'🟡', ok:false, sr:94.2, lat:880, dlq:63,  last:'48s ago', rl:'28/30 rps'},
+  {name:'AppsFlyer',     icon:'🟢', ok:true,  sr:99.6, lat:220, dlq:4,   last:'3s ago',  rl:'91/100 rps'},
+  {name:'BigQuery',      icon:'📊', ok:true,  sr:100,  lat:45,  dlq:0,   last:'0s ago',  rl:'Native'},
+];
+
+const ERROR_POOL = [
+  {lvl:'warn',  dest:'meta_capi',  msg:'Rate limit approaching — 187/200 eps. Backoff triggered.',           code:'429'},
+  {lvl:'error', dest:'amplitude',  msg:'Circuit breaker OPEN. 35 consecutive 503s. DLQ +63.',               code:'503'},
+  {lvl:'info',  dest:'bigquery',   msg:'Dedup merge completed. 1,247 duplicates removed from events_clean.', code:'200'},
+  {lvl:'warn',  dest:'schema',     msg:'Event evt_web_20240317_0119 missing consent.version field. Quarantined.', code:'422'},
+  {lvl:'info',  dest:'identity',   msg:'Merge: usr_a4f2 + usr_b7c9 → usr_a4f2. Keys: email_sha256, loyalty_id.', code:'OK'},
+  {lvl:'error', dest:'firestore',  msg:'Timeout on profile write for uid usr_3a7f. Retry 2/3.',              code:'504'},
+  {lvl:'info',  dest:'consent',    msg:'DSR received for uid usr_2b1c. Suppression cascaded to 5 destinations.', code:'OK'},
+  {lvl:'warn',  dest:'dlq',        msg:'moEngage DLQ depth 12. Auto-replay scheduled in 60s.',               code:'DLQ'},
+  {lvl:'info',  dest:'rollback',   msg:'Profile usr_9k2m rolled back to 2024-03-16T09:12:00Z. Reason: false_positive.', code:'OK'},
+  {lvl:'error', dest:'meta_capi',  msg:'event_id missing on 3 events — dedup will fail at Meta. Check SDK v2.1.', code:'400'},
+  {lvl:'info',  dest:'vbb',        msg:'VBB conversion batch: 2,847 gclid+value pairs sent to Google Ads OCI.', code:'200'},
+  {lvl:'warn',  dest:'suppression',msg:'Suppression list stale >6hrs for Amazon DSP. Refresh triggered.', code:'STALE'},
+];
+
+const DEMO_PROFILE = {
+  uid: 'usr_8f2a9c_unified',
+  meta: 'Created 2023-09-01 · Last seen 2024-03-17T14:23:15Z · Match: DETERMINISTIC · HIGH',
+  audiences: ['high_value_offline','footwear_buyer','q1_active','vbb_platinum','suppression_exclude'],
+  keys: [
+    ['email_sha256','a3d9c...f84e2'],['phone_sha256','b7f12...c93a1'],
+    ['loyalty_id','LYL_0092837'],['crm_id','SF_CONTACT_00X9'],
+    ['gaid','4f3a2b1c-9d8e-...'],['idfa','E621E1F8-...'],
+  ],
+  offline: [
+    ['last_store_visit','2024-03-17'],['total_ltv','£1,247.82'],
+    ['purchase_freq','3.2/month'],['preferred_store','Manchester'],
+    ['offline_score','HIGH'],['purchase_intent','0.87'],
+  ],
+  scores: [
+    ['churn_risk','0.12 (LOW)'],['ltv_percentile','94th'],
+    ['predicted_90d_ltv','£342'],['consent_marketing','✅ true'],
+    ['consent_analytics','✅ true'],['vbb_tier','PLATINUM'],
+  ],
+  audit: [
+    {ts:'2024-03-17 14:23',action:'ENRICHMENT',keys:'email_sha256·loyalty_id',conf:'HIGH',by:'cf-enrich-offline'},
+    {ts:'2024-03-15 09:11',action:'MERGE',keys:'email_sha256',conf:'HIGH',by:'dataflow-identity-v2'},
+    {ts:'2024-03-10 17:44',action:'AUDIENCE_ADD',keys:'vbb_platinum',conf:'COMPUTED',by:'bq-scheduled-query'},
+    {ts:'2024-03-01 08:00',action:'CONSENT_UPDATE',keys:'marketing=true',conf:'—',by:'cmp-tcf2'},
+    {ts:'2023-09-01 09:00',action:'CREATED',keys:'loyalty_id',conf:'DETERMINISTIC',by:'crm-sync-job'},
+  ]
+};
+
+function drawTrend(canvasId, series1, color1, series2, color2, label1, label2, min, max) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx2 = canvas.getContext('2d');
+  const W = canvas.offsetWidth || 500;
+  const H = 140;
+  canvas.width = W;
+  canvas.height = H;
+  ctx2.clearRect(0, 0, W, H);
+
+  // Grid
+  ctx2.strokeStyle = 'rgba(26,45,74,0.5)';
+  ctx2.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = (H - 20) * i / 4 + 10;
+    ctx2.beginPath(); ctx2.moveTo(0, y); ctx2.lineTo(W, y); ctx2.stroke();
+  }
+
+  function drawSeries(data, color, alpha) {
+    const range = max - min || 1;
+    ctx2.beginPath();
+    data.forEach((v, i) => {
+      const x = i * (W / (TREND_POINTS - 1));
+      const y = H - 20 - ((v - min) / range) * (H - 30);
+      i === 0 ? ctx2.moveTo(x, y) : ctx2.lineTo(x, y);
+    });
+    ctx2.strokeStyle = color;
+    ctx2.lineWidth = 1.5;
+    ctx2.stroke();
+
+    // Fill under line
+    const lastX = (TREND_POINTS - 1) * (W / (TREND_POINTS - 1));
+    const lastV = data[TREND_POINTS - 1];
+    const lastY = H - 20 - ((lastV - min) / range) * (H - 30);
+    ctx2.lineTo(lastX, H - 10);
+    ctx2.lineTo(0, H - 10);
+    ctx2.closePath();
+    const grad = ctx2.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, color.replace(')', `,${alpha})`).replace('rgb','rgba'));
+    grad.addColorStop(1, color.replace(')', ',0)').replace('rgb','rgba'));
+    ctx2.fillStyle = grad;
+    ctx2.fill();
+
+    // Live dot
+    const lx = (TREND_POINTS - 1) * (W / (TREND_POINTS - 1));
+    const ly = H - 20 - ((lastV - min) / range) * (H - 30);
+    ctx2.beginPath();
+    ctx2.arc(lx, ly, 4, 0, Math.PI * 2);
+    ctx2.fillStyle = color;
+    ctx2.fill();
+    ctx2.beginPath();
+    ctx2.arc(lx, ly, 7, 0, Math.PI * 2);
+    ctx2.strokeStyle = color;
+    ctx2.globalAlpha = 0.3 + 0.3 * Math.abs(Math.sin(Date.now() / 400));
+    ctx2.lineWidth = 1.5;
+    ctx2.stroke();
+    ctx2.globalAlpha = 1;
+  }
+
+  drawSeries(series1, color1, 0.15);
+  drawSeries(series2, color2, 0.10);
+}
+
+function pushTrend(arr, val, noise, min, max) {
+  arr.shift();
+  const next = Math.min(max, Math.max(min, val + (Math.random() - 0.5) * noise));
+  arr.push(next);
+  return next;
+}
+
+function updateDashboard() {
+  // Push new data points
+  const newEps   = pushTrend(trendData.eps,     eventsPerSec, 300,  8000, 18000);
+  const newErrs  = pushTrend(trendData.errs,    18,           10,   0,    80);
+  const newMatch = pushTrend(trendData.match,   71.3,         0.5,  65,   78);
+  const newCol   = pushTrend(trendData.collide, 5,            3,    0,    20);
+  const newSr    = pushTrend(trendData.success, 98.8,         0.4,  94,   100);
+  const newDlq   = pushTrend(trendData.dlq,     8,            5,    0,    40);
+  const newBlk   = pushTrend(trendData.blocked, 80,           20,   30,   150);
+  const newDsr   = pushTrend(trendData.dsr,     1.5,          1,    0,    6);
+
+  const errRate = (newErrs / newEps * 100).toFixed(2);
+
+  // Update KPI tiles
+  const setEl = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
+  setEl('d-err-rate', errRate + '%');
+  setEl('d-eps',      Math.round(newEps).toLocaleString());
+  setEl('d-match',    newMatch.toFixed(1) + '%');
+  setEl('d-egress',   newSr.toFixed(1) + '%');
+  setEl('d-dlq',      (247 + Math.floor(Math.random() * 20 - 8)).toString());
+  setEl('d-merges',   (8934 + Math.floor(Math.random() * 30)).toLocaleString());
+  setEl('d-blocks',   (1892 + Math.floor(Math.random() * 10 - 3)).toLocaleString());
+
+  // Colour KPI tiles
+  const errKpi = document.querySelectorAll('#dash-kpi-row .dash-kpi')[0];
+  if (errKpi) {
+    errKpi.className = 'dash-kpi ' + (parseFloat(errRate) < 0.5 ? 'ok' : parseFloat(errRate) < 1.5 ? 'warn' : 'error');
+  }
+
+  // Update gauge
+  const errPct = Math.min(100, parseFloat(errRate) * 20); // scale 5% → full
+  const dashOffset = 172 - (172 * errPct / 100);
+  const gaugeFill = document.getElementById('gauge-fill');
+  const gaugeNeedle = document.getElementById('gauge-needle');
+  if (gaugeFill) gaugeFill.setAttribute('stroke-dashoffset', dashOffset);
+  if (gaugeNeedle) {
+    const angle = -75 + (errPct / 100) * 150;
+    gaugeNeedle.setAttribute('transform', `rotate(${angle} 70 80)`);
+  }
+  const gaugeVal = document.getElementById('gauge-val');
+  if (gaugeVal) {
+    gaugeVal.textContent = errRate + '%';
+    gaugeVal.style.color = parseFloat(errRate) < 0.5 ? 'var(--emerald)' : parseFloat(errRate) < 1.5 ? 'var(--amber)' : 'var(--rose)';
+  }
+  setEl('g-schema',  (parseFloat(errRate) * 0.35).toFixed(2) + '%');
+  setEl('g-consent', (parseFloat(errRate) * 0.50).toFixed(2) + '%');
+  setEl('g-dlq',     (parseFloat(errRate) * 0.15).toFixed(2) + '%');
+
+  // Redraw all trend charts
+  drawTrend('trend-ingestion', trendData.eps,    '#00d4ff', trendData.errs,   '#f43f5e', 'eps','errs',   0,    18000);
+  drawTrend('trend-identity',  trendData.match,  '#10b981', trendData.collide,'#f59e0b', 'match','col',  60,   80);
+  drawTrend('trend-egress',    trendData.success,'#10b981', trendData.dlq,    '#f59e0b', 'sr','dlq',     90,   101);
+  drawTrend('trend-blocking',  trendData.blocked,'#f43f5e', trendData.dsr,    '#8b5cf6', 'blk','dsr',    0,    160);
+
+  // Animate connector status rows
+  updateConnectorTable();
+}
+
+function updateConnectorTable() {
+  const tbody = document.getElementById('connector-status-body');
+  if (!tbody) return;
+  tbody.innerHTML = CONNECTORS.map(c => {
+    const sr = (c.sr + (Math.random() - 0.5) * 0.3).toFixed(1);
+    const lat = c.lat > 0 ? (c.lat + Math.floor((Math.random() - 0.5) * 30)) + 'ms' : 'N/A';
+    const dlqNow = c.dlq + Math.floor((Math.random() - 0.5) * 4);
+    const healthy = c.ok && parseFloat(sr) > 95;
+    return `<tr>
+      <td>${c.icon} <strong>${c.name}</strong></td>
+      <td><span class="pill ${healthy ? 'pill-green' : 'pill-rose'}">${healthy ? '● HEALTHY' : '● DEGRADED'}</span></td>
+      <td style="color:${parseFloat(sr)>98?'var(--emerald)':parseFloat(sr)>95?'var(--amber)':'var(--rose)'}">${sr}%</td>
+      <td style="color:${c.lat>500?'var(--rose)':c.lat>300?'var(--amber)':'var(--emerald)'}">${lat}</td>
+      <td style="color:${dlqNow>50?'var(--rose)':dlqNow>10?'var(--amber)':'var(--muted2)'}">${dlqNow}</td>
+      <td style="color:var(--muted2)">${c.last}</td>
+      <td style="color:var(--muted2);font-size:.67rem">${c.rl}</td>
+    </tr>`;
+  }).join('');
+}
+
+function addErrorLog() {
+  const log = document.getElementById('error-log');
+  if (!log) return;
+  const e = ERROR_POOL[Math.floor(Math.random() * ERROR_POOL.length)];
+  const now = new Date();
+  const time = now.toTimeString().slice(0, 8);
+  const icon  = e.lvl === 'error' ? '🔴' : e.lvl === 'warn' ? '🟡' : '🔵';
+  const tagCls = e.lvl === 'error' ? 'border-color:var(--rose);color:var(--rose)' :
+                  e.lvl === 'warn'  ? 'border-color:var(--amber);color:var(--amber)' :
+                                      'border-color:var(--cyan);color:var(--cyan)';
+  const item = document.createElement('div');
+  item.className = 'error-item';
+  item.innerHTML = `
+    <div class="error-time">${time}</div>
+    <div class="error-icon">${icon}</div>
+    <div class="error-msg"><strong>${e.dest}</strong> — ${e.msg}</div>
+    <div class="error-tag" style="${tagCls}">${e.code}</div>`;
+  log.insertBefore(item, log.firstChild);
+  if (log.children.length > 18) log.removeChild(log.lastChild);
+}
+
+// ═══════════ PROFILE SEARCH ═══════════
+function lookupProfile() {
+  const val = document.getElementById('profile-search-input').value.trim();
+  if (!val) return;
+  loadDemoProfile(val);
+}
+
+function loadDemoProfile(searchVal) {
+  const p = DEMO_PROFILE;
+  const result = document.getElementById('profile-result');
+  document.getElementById('pr-uid').textContent = p.uid;
+  document.getElementById('pr-meta').textContent = p.meta;
+
+  const audEl = document.getElementById('pr-audiences');
+  audEl.innerHTML = p.audiences.map(a =>
+    `<span class="pill pill-cyan" style="font-size:.6rem">${a}</span>`).join('');
+
+  document.getElementById('pr-keys').innerHTML = p.keys.map(([k,v]) =>
+    `<div><span style="color:var(--muted)">${k}:</span> <span style="color:var(--cyan)">${v}</span></div>`).join('');
+
+  document.getElementById('pr-offline').innerHTML = p.offline.map(([k,v]) =>
+    `<div><span style="color:var(--muted)">${k}:</span> <span style="color:var(--amber)">${v}</span></div>`).join('');
+
+  document.getElementById('pr-scores').innerHTML = p.scores.map(([k,v]) =>
+    `<div><span style="color:var(--muted)">${k}:</span> <span style="color:var(--emerald)">${v}</span></div>`).join('');
+
+  result.classList.add('visible');
+  document.getElementById('action-feedback').style.display = 'none';
+  document.getElementById('audit-log-block').style.display = 'none';
+}
+
+function triggerRollback() {
+  const fb = document.getElementById('action-feedback');
+  fb.className = 'alert alert-warn';
+  fb.textContent = '⏪ Rollback queued for usr_8f2a9c_unified → snapshot 2024-03-16T09:12:00Z. Reason: manual_override. Downstream re-sync scheduled for: Google Ads, Meta CAPI, moEngage, Amplitude.';
+  fb.style.display = 'flex';
+}
+
+function triggerFreeze() {
+  const fb = document.getElementById('action-feedback');
+  fb.className = 'alert alert-danger';
+  fb.textContent = '🔒 Profile usr_8f2a9c_unified FROZEN. All egress blocked. Fraud review ticket raised: CDP-FRD-2024-0341. Downstream suppression cascaded to 5 destinations in <15min.';
+  fb.style.display = 'flex';
+}
+
+function viewAuditLog() {
+  const block = document.getElementById('audit-log-block');
+  if (block.style.display !== 'none') { block.style.display = 'none'; return; }
+  const table = document.getElementById('audit-table');
+  table.innerHTML = `<thead><tr><th>Timestamp</th><th>Action</th><th>Keys Used</th><th>Confidence</th><th>Triggered By</th></tr></thead>
+  <tbody>${DEMO_PROFILE.audit.map(r =>
+    `<tr><td>${r.ts}</td><td><span class="pill ${r.action==='ROLLBACK'?'pill-rose':r.action==='MERGE'?'pill-cyan':r.action==='CREATED'?'pill-green':'pill-amber'}">${r.action}</span></td><td>${r.keys}</td><td>${r.conf}</td><td style="color:var(--muted2)">${r.by}</td></tr>`
+  ).join('')}</tbody>`;
+  block.style.display = 'block';
+}
+
+let dashInterval = null;
+let errInterval  = null;
+
+function initDashboard() {
+  if (dashInited) return;
+  dashInited = true;
+
+  // Seed error log
+  for (let i = 0; i < 6; i++) addErrorLog();
+
+  // Initial render
+  updateDashboard();
+  updateConnectorTable();
+
+  // Live tick
+  dashInterval = setInterval(updateDashboard, 1200);
+  errInterval  = setInterval(addErrorLog, 3500);
+}
+
+// Resize handler for trend canvases
+window.addEventListener('resize', () => {
+  if (dashInited) updateDashboard();
+});
+</script>
+</body>
+</html>
