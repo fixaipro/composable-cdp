@@ -817,10 +817,10 @@ details > *:not(summary){padding:.5rem 0 .5rem 1rem}
   </div>
 
   <div class="inner-tabs">
-    <div class="inner-tab active" onclick="switchInner('offline','flow')">Data Flow</div>
-    <div class="inner-tab" onclick="switchInner('offline','schema')">Dummy Data</div>
-    <div class="inner-tab" onclick="switchInner('offline','enrichment')">Enrichment Logic</div>
-    <div class="inner-tab" onclick="switchInner('offline','use-cases')">Use Cases</div>
+    <div class="inner-tab active" onclick="switchInner('offline','flow',this)">Data Flow</div>
+    <div class="inner-tab" onclick="switchInner('offline','schema',this)">Dummy Data</div>
+    <div class="inner-tab" onclick="switchInner('offline','enrichment',this)">Enrichment Logic</div>
+    <div class="inner-tab" onclick="switchInner('offline','use-cases',this)">Use Cases</div>
   </div>
 
   <div id="offline-flow" class="inner-panel active">
@@ -1322,12 +1322,12 @@ egress_config:
   </div>
 
   <div class="inner-tabs">
-    <div class="inner-tab active" onclick="switchInner('identity','graph')">Identity Graph</div>
-    <div class="inner-tab" onclick="switchInner('identity','realflow')" style="color:var(--emerald);border-color:rgba(16,185,129,.35)">▶ Real-Life Flow</div>
-    <div class="inner-tab" onclick="switchInner('identity','collision')">Collision Strategy</div>
-    <div class="inner-tab" onclick="switchInner('identity','rollback')">⏪ Fallback & Rollback</div>
-    <div class="inner-tab" onclick="switchInner('identity','schema')">Data Model</div>
-    <div class="inner-tab" onclick="switchInner('identity','limits')">Limitations</div>
+    <div class="inner-tab active" onclick="switchInner('identity','graph',this)">Identity Graph</div>
+    <div class="inner-tab" onclick="switchInner('identity','realflow',this)" style="color:var(--emerald);border-color:rgba(16,185,129,.35)">▶ Real-Life Flow</div>
+    <div class="inner-tab" onclick="switchInner('identity','collision',this)">Collision Strategy</div>
+    <div class="inner-tab" onclick="switchInner('identity','rollback',this)">⏪ Fallback & Rollback</div>
+    <div class="inner-tab" onclick="switchInner('identity','schema',this)">Data Model</div>
+    <div class="inner-tab" onclick="switchInner('identity','limits',this)">Limitations</div>
   </div>
 
   <!-- ══ REAL-LIFE FLOW PANEL ══ -->
@@ -1961,11 +1961,11 @@ egress_config:
   </div>
 
   <div class="inner-tabs">
-    <div class="inner-tab active" onclick="switchInner('schema','json')">JSON Schema</div>
-    <div class="inner-tab" onclick="switchInner('schema','dedup')">Deduplication</div>
-    <div class="inner-tab" onclick="switchInner('schema','blocking')">Blocking Rules</div>
-    <div class="inner-tab" onclick="switchInner('schema','access')">Access Control</div>
-    <div class="inner-tab" onclick="switchInner('schema','egress')">Egress Throttle</div>
+    <div class="inner-tab active" onclick="switchInner('schema','json',this)">JSON Schema</div>
+    <div class="inner-tab" onclick="switchInner('schema','dedup',this)">Deduplication</div>
+    <div class="inner-tab" onclick="switchInner('schema','blocking',this)">Blocking Rules</div>
+    <div class="inner-tab" onclick="switchInner('schema','access',this)">Access Control</div>
+    <div class="inner-tab" onclick="switchInner('schema','egress',this)">Egress Throttle</div>
   </div>
 
   <div id="schema-json" class="inner-panel active">
@@ -2985,23 +2985,40 @@ window.addEventListener('resize', () => { initCanvas(); });
 function showSection(id) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
+  const section = document.getElementById(id);
+  section.classList.add('active');
   const tabs = document.querySelectorAll('.nav-tab');
   const names = ['architecture','offline-online','connectors','identity','schema','prereqs','usecases','opsdash'];
   tabs[names.indexOf(id)]?.classList.add('active');
   if (id === 'opsdash') initDashboard();
+
+  // Restore first inner panel and first inner tab as active whenever section is shown
+  const innerPanels = section.querySelectorAll('.inner-panel');
+  const innerTabs   = section.querySelectorAll('.inner-tab');
+  if (innerPanels.length) {
+    innerPanels.forEach(p => p.classList.remove('active'));
+    innerTabs.forEach(t => t.classList.remove('active'));
+    innerPanels[0].classList.add('active');
+    if (innerTabs[0]) innerTabs[0].classList.add('active');
+  }
 }
 
 // ═══════════════ INNER TABS ═══════════════
-function switchInner(section, panel) {
-  const allPanels = document.querySelectorAll(`[id^="${section}-"]`);
+function switchInner(section, panel, el) {
+  // Scope to the closest section container so we never touch other sections' panels
+  const clickedTab = el || event?.target;
+  const container  = clickedTab ? clickedTab.closest('.section') : document;
+
+  const allPanels = (container || document).querySelectorAll('.inner-panel');
   allPanels.forEach(p => p.classList.remove('active'));
   document.getElementById(`${section}-${panel}`)?.classList.add('active');
 
   // Update inner tab styles
-  event.target.closest('.inner-tabs')?.querySelectorAll('.inner-tab')
-    .forEach(t => t.classList.remove('active'));
-  event.target.classList.add('active');
+  if (clickedTab) {
+    clickedTab.closest('.inner-tabs')?.querySelectorAll('.inner-tab')
+      .forEach(t => t.classList.remove('active'));
+    clickedTab.classList.add('active');
+  }
 }
 
 // ═══════════════ LIVE METRICS ═══════════════
